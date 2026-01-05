@@ -53,7 +53,7 @@ const Hero = () => {
             </div>
 
             {/* CTA */}
-            <div className="flex flex-col sm:flex-row gap-4">
+            {/* <div className="flex flex-col sm:flex-row gap-4">
               <button className="group bg-white text-blue-700 px-8 py-4 rounded-full font-semibold hover:shadow-2xl transition-all duration-200 flex items-center justify-center gap-2">
                 Start Your Journey
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
@@ -61,7 +61,7 @@ const Hero = () => {
               <button className="border-2 border-white/30 backdrop-blur-sm text-white px-8 py-4 rounded-full font-semibold hover:bg-white/10 transition-all duration-200">
                 Learn More
               </button>
-            </div>
+            </div> */}
 
             {/* Social Proof */}
             <div className="flex items-center gap-6 pt-4">
