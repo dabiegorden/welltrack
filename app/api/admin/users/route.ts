@@ -18,32 +18,32 @@ async function isAdmin() {
 }
 
 export async function GET(request: Request) {
-  if (!(await isAdmin())) {
+  const cookieStore = await cookies();
+  const token = cookieStore.get("token")?.value;
+
+  if (!token) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  const decoded = verifyToken(token);
+  if (!decoded) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
+  // ⛔ Only restrict writes, NOT reads
   try {
     const { searchParams } = new URL(request.url);
-    const search = searchParams.get("search");
     const role = searchParams.get("role");
 
     await connectDB();
 
     const query: any = { role: { $ne: "admin" } };
+    if (role) query.role = role;
 
-    if (role) {
-      query.role = role;
-    }
+    const users = await User.find(query).select(
+      "firstname lastname email role"
+    );
 
-    if (search) {
-      query.$or = [
-        { firstname: { $regex: search, $options: "i" } },
-        { lastname: { $regex: search, $options: "i" } },
-        { email: { $regex: search, $options: "i" } },
-      ];
-    }
-
-    const users = await User.find(query).sort({ createdAt: -1 });
     return NextResponse.json({ users });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });

@@ -94,7 +94,7 @@ export default function DashboardLayout({ children }: { children: ReactNode }) {
               <BreadcrumbList>
                 <BreadcrumbItem className="hidden md:block">
                   <Link
-                    href="/"
+                    href="/admin-dashboard"
                     className="text-gray-400 hover:text-white transition-colors"
                   >
                     Dashboard
