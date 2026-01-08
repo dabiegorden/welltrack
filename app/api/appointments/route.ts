@@ -67,9 +67,6 @@ export async function GET(request: NextRequest) {
 /* ----------------------------------------------------
    POST — Create appointment (ADMIN only)
 ---------------------------------------------------- */
-/* ----------------------------------------------------
-   POST — Create appointment (ADMIN only)
----------------------------------------------------- */
 export async function POST(request: NextRequest) {
   try {
     const token = request.cookies.get("token")?.value;
@@ -81,11 +78,11 @@ export async function POST(request: NextRequest) {
     const body = await request.json();
     const { officerId, counselorId, date, duration, status, notes } = body;
 
-    // ✅ NEW VALIDATION
-    if (!date || (!officerId && !counselorId)) {
+    // ✅ EXACTLY one must be provided
+    if (!date || (officerId && counselorId) || (!officerId && !counselorId)) {
       return NextResponse.json(
         {
-          error: "Date and either officer or counselor are required",
+          error: "Appointment must be with either an officer OR a counselor",
         },
         { status: 400 }
       );

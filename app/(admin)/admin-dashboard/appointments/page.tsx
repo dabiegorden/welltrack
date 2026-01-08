@@ -261,9 +261,9 @@ export default function AppointmentsPage() {
               {!editingId && (
                 <div>
                   <label className="block text-sm font-medium mb-2">
-                    Who is this appointment with?
+                    Appointment Type
                   </label>
-                  <Tabs
+                  <Select
                     value={userType}
                     onValueChange={(value) => {
                       setUserType(value as "officer" | "counselor");
@@ -275,13 +275,15 @@ export default function AppointmentsPage() {
                           value === "counselor" ? formData.counselorId : "",
                       });
                     }}
-                    className="w-full"
                   >
-                    <TabsList className="grid w-full grid-cols-2">
-                      <TabsTrigger value="officer">Officer</TabsTrigger>
-                      <TabsTrigger value="counselor">Counselor</TabsTrigger>
-                    </TabsList>
-                  </Tabs>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select appointment type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="officer">Officer</SelectItem>
+                      <SelectItem value="counselor">Counselor</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               )}
 
@@ -431,27 +433,23 @@ export default function AppointmentsPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Officer</TableHead>
-                    <TableHead>Counselor</TableHead>
+                    <TableHead>Name</TableHead>
                     <TableHead>Date & Time</TableHead>
                     <TableHead>Duration</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
+
                 <TableBody>
                   {appointments.map((apt) => (
                     <TableRow key={apt._id}>
-                      <TableCell className="text-sm">
+                      <TableCell className="text-sm font-medium">
                         {apt.officerId
                           ? `${apt.officerId.firstname} ${apt.officerId.lastname}`
-                          : "—"}
+                          : `${apt.counselorId.firstname} ${apt.counselorId.lastname}`}
                       </TableCell>
-                      <TableCell className="text-sm">
-                        {apt.counselorId
-                          ? `${apt.counselorId.firstname} ${apt.counselorId.lastname}`
-                          : "—"}
-                      </TableCell>
+
                       <TableCell>
                         {new Date(apt.date).toLocaleString()}
                       </TableCell>

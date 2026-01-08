@@ -71,8 +71,9 @@ export default function CounselorsPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      const url = editingId ? `/api/counselors` : `/api/admin/users`;
+      const url = `/api/counselors`;
       const method = editingId ? "PUT" : "POST";
+
       const payload = editingId
         ? { id: editingId, ...formData }
         : { ...formData, role: "counselor" };

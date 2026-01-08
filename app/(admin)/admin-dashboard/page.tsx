@@ -1,6 +1,4 @@
 "use client";
-
-import { useEffect, useState } from "react";
 import {
   Card,
   CardContent,
@@ -24,10 +22,11 @@ import {
 } from "recharts";
 import {
   Users,
-  TrendingUp,
   Calendar,
   AlertCircle,
   Loader2,
+  FileText,
+  Clipboard,
 } from "lucide-react";
 import useSWR from "swr";
 
@@ -39,6 +38,8 @@ interface AdminStats {
   totalAssessments: number;
   highStressCount: number;
   totalSessions: number;
+  totalResources: number;
+  totalTemplates: number;
   avgStressLevel: number;
 }
 
@@ -59,30 +60,53 @@ interface CounselorStats {
 
 type Stats = AdminStats | OfficerStats | CounselorStats;
 
-export default function DashboardHomePage() {
-  const [userRole, setUserRole] = useState<string>("");
-  const { data, isLoading, error } = useSWR<{ role: string; stats: Stats }>(
+interface DashboardData {
+  role: string;
+  stats: Stats;
+  charts?: {
+    assessmentTrend?: Array<{ date: string; count: number }>;
+    stressDistribution?: Array<{ name: string; value: number }>;
+    stressProgress?: Array<{ date: string; score: number }>;
+    sessionDistribution?: Array<{ status: string; count: number }>;
+  };
+}
+
+const STRESS_COLORS = {
+  low: "#10B981",
+  moderate: "#F59E0B",
+  high: "#EF4444",
+};
+
+const EMPTY_PIE_DATA = [{ name: "No data", value: 1 }];
+
+const DEFAULT_EMPTY_TREND = Array.from({ length: 7 }, (_, i) => {
+  const date = new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000);
+  return {
+    date: date.toISOString().split("T")[0],
+    count: 0,
+  };
+});
+
+const DEFAULT_STRESS_DIST = [
+  { name: "Low", value: 0 },
+  { name: "Moderate", value: 0 },
+  { name: "High", value: 0 },
+];
+
+const DEFAULT_SESSION_DIST = [
+  { status: "Scheduled", count: 0 },
+  { status: "Completed", count: 0 },
+  { status: "Cancelled", count: 0 },
+];
+
+export default function DashboardPage() {
+  const { data, isLoading, error } = useSWR<DashboardData>(
     "/api/dashboard/stats",
     fetcher,
     {
       revalidateOnFocus: false,
     }
   );
-
-  useEffect(() => {
-    const checkUser = async () => {
-      try {
-        const res = await fetch("/api/auth/profile");
-        const userData = await res.json();
-        if (userData.user) {
-          setUserRole(userData.user.role);
-        }
-      } catch (error) {
-        console.error("Failed to fetch user role:", error);
-      }
-    };
-    checkUser();
-  }, []);
 
   if (isLoading) {
     return (
@@ -100,8 +124,14 @@ export default function DashboardHomePage() {
     );
   }
 
+  const stressDist = data?.charts?.stressDistribution ?? DEFAULT_STRESS_DIST;
+
+  const totalStress = stressDist.reduce((sum, item) => sum + item.value, 0);
+
+  const pieData = totalStress === 0 ? EMPTY_PIE_DATA : stressDist;
+
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 pt-8">
       <div>
         <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
         <p className="text-gray-400">
@@ -111,7 +141,7 @@ export default function DashboardHomePage() {
 
       {data?.role === "admin" && (
         <>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
             <Card className="bg-gray-900 border-gray-800">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium text-gray-400">
@@ -155,7 +185,7 @@ export default function DashboardHomePage() {
                   <div className="text-2xl font-bold text-white">
                     {(data.stats as AdminStats).totalAssessments}
                   </div>
-                  <TrendingUp className="h-8 w-8 text-green-500" />
+                  <Clipboard className="h-8 w-8 text-green-500" />
                 </div>
               </CardContent>
             </Card>
@@ -191,6 +221,38 @@ export default function DashboardHomePage() {
                 </div>
               </CardContent>
             </Card>
+
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-400">
+                  Resources
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="text-2xl font-bold text-white">
+                    {(data.stats as AdminStats).totalResources}
+                  </div>
+                  <FileText className="h-8 w-8 text-orange-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-400">
+                  Templates
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="text-2xl font-bold text-white">
+                    {(data.stats as AdminStats).totalTemplates}
+                  </div>
+                  <Clipboard className="h-8 w-8 text-pink-500" />
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -202,18 +264,15 @@ export default function DashboardHomePage() {
               <CardContent>
                 <ResponsiveContainer width="100%" height={300}>
                   <LineChart
-                    data={[
-                      { day: "Mon", count: 12 },
-                      { day: "Tue", count: 19 },
-                      { day: "Wed", count: 15 },
-                      { day: "Thu", count: 22 },
-                      { day: "Fri", count: 25 },
-                      { day: "Sat", count: 18 },
-                      { day: "Sun", count: 14 },
-                    ]}
+                    data={
+                      data?.charts?.assessmentTrend &&
+                      data.charts.assessmentTrend.length > 0
+                        ? data.charts.assessmentTrend
+                        : DEFAULT_EMPTY_TREND
+                    }
                   >
                     <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                    <XAxis stroke="#9CA3AF" />
+                    <XAxis stroke="#9CA3AF" dataKey="date" />
                     <YAxis stroke="#9CA3AF" />
                     <Tooltip
                       contentStyle={{
@@ -229,6 +288,12 @@ export default function DashboardHomePage() {
                     />
                   </LineChart>
                 </ResponsiveContainer>
+                {(!data?.charts?.assessmentTrend ||
+                  data.charts.assessmentTrend.length === 0) && (
+                  <p className="text-center text-gray-500 text-sm mt-2">
+                    No assessment data yet
+                  </p>
+                )}
               </CardContent>
             </Card>
 
@@ -243,26 +308,39 @@ export default function DashboardHomePage() {
                 <ResponsiveContainer width="100%" height={300}>
                   <PieChart>
                     <Pie
-                      data={[
-                        { name: "Low", value: 45 },
-                        { name: "Moderate", value: 35 },
-                        { name: "High", value: 20 },
-                      ]}
+                      data={pieData}
                       cx="50%"
                       cy="50%"
                       labelLine={false}
-                      label={({ name, value }: any) => `${name} (${value}%)`}
+                      label={({ name, value }) =>
+                        totalStress === 0 ? "No data" : `${name} (${value})`
+                      }
                       outerRadius={80}
-                      fill="#8884d8"
                       dataKey="value"
                     >
-                      <Cell fill="#10B981" />
-                      <Cell fill="#F59E0B" />
-                      <Cell fill="#EF4444" />
+                      {pieData.map((_, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={
+                            totalStress === 0
+                              ? "#374151" // neutral gray
+                              : Object.values(STRESS_COLORS)[index]
+                          }
+                        />
+                      ))}
                     </Pie>
                     <Tooltip />
                   </PieChart>
                 </ResponsiveContainer>
+
+                {(!data?.charts?.stressDistribution ||
+                  data.charts.stressDistribution.every(
+                    (item: any) => item.value === 0
+                  )) && (
+                  <p className="text-center text-gray-500 text-sm mt-2">
+                    No stress data yet
+                  </p>
+                )}
               </CardContent>
             </Card>
           </div>
@@ -283,7 +361,7 @@ export default function DashboardHomePage() {
                   <div className="text-2xl font-bold text-white">
                     {(data.stats as OfficerStats).totalAssessments}
                   </div>
-                  <TrendingUp className="h-8 w-8 text-blue-500" />
+                  <Clipboard className="h-8 w-8 text-blue-500" />
                 </div>
               </CardContent>
             </Card>
@@ -345,20 +423,20 @@ export default function DashboardHomePage() {
           <Card className="bg-gray-900 border-gray-800">
             <CardHeader>
               <CardTitle className="text-white">Your Stress Progress</CardTitle>
-              <CardDescription>Trend over time</CardDescription>
+              <CardDescription>Trend over time (30 days)</CardDescription>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart
-                  data={[
-                    { date: "Week 1", score: 65 },
-                    { date: "Week 2", score: 62 },
-                    { date: "Week 3", score: 58 },
-                    { date: "Week 4", score: 55 },
-                  ]}
+                  data={
+                    data?.charts?.stressProgress &&
+                    data.charts.stressProgress.length > 0
+                      ? data.charts.stressProgress
+                      : DEFAULT_EMPTY_TREND
+                  }
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis stroke="#9CA3AF" />
+                  <XAxis stroke="#9CA3AF" dataKey="date" />
                   <YAxis stroke="#9CA3AF" />
                   <Tooltip
                     contentStyle={{
@@ -374,6 +452,12 @@ export default function DashboardHomePage() {
                   />
                 </LineChart>
               </ResponsiveContainer>
+              {(!data?.charts?.stressProgress ||
+                data.charts.stressProgress.length === 0) && (
+                <p className="text-center text-gray-500 text-sm mt-2">
+                  No stress progress data yet
+                </p>
+              )}
             </CardContent>
           </Card>
         </>
@@ -457,14 +541,15 @@ export default function DashboardHomePage() {
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart
-                  data={[
-                    { status: "Completed", count: 24 },
-                    { status: "Upcoming", count: 8 },
-                    { status: "Cancelled", count: 3 },
-                  ]}
+                  data={
+                    data?.charts?.sessionDistribution &&
+                    data.charts.sessionDistribution.length > 0
+                      ? data.charts.sessionDistribution
+                      : DEFAULT_SESSION_DIST
+                  }
                 >
                   <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis stroke="#9CA3AF" />
+                  <XAxis stroke="#9CA3AF" dataKey="status" />
                   <YAxis stroke="#9CA3AF" />
                   <Tooltip
                     contentStyle={{
@@ -475,6 +560,12 @@ export default function DashboardHomePage() {
                   <Bar dataKey="count" fill="#3B82F6" />
                 </BarChart>
               </ResponsiveContainer>
+              {(!data?.charts?.sessionDistribution ||
+                data.charts.sessionDistribution.length === 0) && (
+                <p className="text-center text-gray-500 text-sm mt-2">
+                  No session data yet
+                </p>
+              )}
             </CardContent>
           </Card>
         </>

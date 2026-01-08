@@ -2,6 +2,10 @@ import { type NextRequest, NextResponse } from "next/server";
 import { connectDB } from "@/lib/config/mongodb";
 import User from "@/lib/models/User";
 import { verifyToken } from "@/lib/auth";
+import bcrypt from "bcryptjs";
+import crypto from "crypto";
+import { EmailTemplate } from "@/components/EmailTemplate";
+import { Resend } from "resend";
 
 export async function GET(request: NextRequest) {
   try {
@@ -28,6 +32,88 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("Error fetching counselors:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+// POST REQUEST HANDLER TO CREATE A NEW COUNSELOR
+
+export async function POST(request: NextRequest) {
+  try {
+    await connectDB();
+
+    const token = request.cookies.get("token")?.value;
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const payload = verifyToken(token);
+    if (!payload || payload.role !== "admin") {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    const { email, firstname, lastname, phone, address } = await request.json();
+
+    if (!email || !firstname || !lastname) {
+      return NextResponse.json(
+        { error: "Missing required fields" },
+        { status: 400 }
+      );
+    }
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return NextResponse.json(
+        { error: "User already exists" },
+        { status: 409 }
+      );
+    }
+
+    // 🔐 Generate secure password
+    const rawPassword = crypto.randomBytes(8).toString("hex");
+    const hashedPassword = await bcrypt.hash(rawPassword, 12);
+
+    const counselor = await User.create({
+      email,
+      password: hashedPassword,
+      firstname,
+      lastname,
+      phone,
+      address,
+      role: "counselor",
+    });
+
+    // 📧 Send onboarding email (non-blocking)
+    try {
+      if (process.env.RESEND_API_KEY) {
+        const resend = new Resend(process.env.RESEND_API_KEY);
+        await resend.emails.send({
+          from: "support@jssolutionshub.com",
+          to: [email],
+          subject: "Welcome to WellTrack – Your Counselor Account",
+          react: await EmailTemplate({
+            firstName: firstname,
+            email,
+            password: rawPassword,
+            role: "counselor",
+            isNewUser: true,
+          }),
+        });
+      }
+    } catch (emailError) {
+      console.error("Failed to send onboarding email:", emailError);
+      // Do NOT fail user creation if email fails
+    }
+
+    const safeUser = counselor.toObject();
+    delete safeUser.password;
+
+    return NextResponse.json({ data: safeUser }, { status: 201 });
+  } catch (error) {
+    console.error("Error creating counselor:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

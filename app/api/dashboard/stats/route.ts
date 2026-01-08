@@ -4,7 +4,9 @@ import { cookies } from "next/headers";
 import { connectDB } from "@/lib/config/mongodb";
 import User from "@/lib/models/User";
 import StressAssessment from "@/lib/models/StressAssessment";
-import CounselingSession from "@/lib/models/Appointment";
+import Appointment from "@/lib/models/Appointment";
+import Resources from "@/lib/models/Resources";
+import AssessmentTemplate from "@/lib/models/AssessmentTemplate";
 
 export async function GET(request: NextRequest) {
   try {
@@ -23,14 +25,53 @@ export async function GET(request: NextRequest) {
     await connectDB();
 
     if (payload.role === "admin") {
-      // Admin sees system-wide statistics
       const totalOfficers = await User.countDocuments({ role: "officer" });
       const totalCounselors = await User.countDocuments({ role: "counselor" });
       const totalAssessments = await StressAssessment.countDocuments();
       const highStressCount = await StressAssessment.countDocuments({
         stressLevel: "high",
       });
-      const totalSessions = await CounselingSession.countDocuments();
+      const totalSessions = await Appointment.countDocuments();
+      const totalResources = await Resources.countDocuments();
+      const totalTemplates = await AssessmentTemplate.countDocuments();
+
+      const stressDistribution = await StressAssessment.aggregate([
+        {
+          $group: {
+            _id: "$stressLevel",
+            count: { $sum: 1 },
+          },
+        },
+      ]);
+
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const assessmentTrend = await StressAssessment.aggregate([
+        {
+          $match: {
+            createdAt: { $gte: sevenDaysAgo },
+          },
+        },
+        {
+          $group: {
+            _id: {
+              $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+            },
+            count: { $sum: 1 },
+          },
+        },
+        {
+          $sort: { _id: 1 },
+        },
+      ]);
+
+      const avgStressData = await StressAssessment.aggregate([
+        {
+          $group: {
+            _id: null,
+            average: { $avg: "$totalScore" },
+          },
+        },
+      ]);
 
       return NextResponse.json({
         role: "admin",
@@ -40,20 +81,50 @@ export async function GET(request: NextRequest) {
           totalAssessments,
           highStressCount,
           totalSessions,
-          avgStressLevel:
-            totalAssessments > 0
-              ? (
-                  await StressAssessment.aggregate([
-                    { $group: { _id: null, avg: { $avg: "$score" } } },
-                  ])
-                )[0]?.avg.toFixed(2) || 0
-              : 0,
+          totalResources,
+          totalTemplates,
+          avgStressLevel: avgStressData[0]?.average.toFixed(2) || 0,
+        },
+        charts: {
+          assessmentTrend: Array.from({ length: 7 }, (_, i) => {
+            const date = new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000);
+            const dateStr = date.toISOString().split("T")[0];
+            const found = assessmentTrend.find(
+              (item: any) => item._id === dateStr
+            );
+            return {
+              date: dateStr,
+              count: found?.count || 0,
+            };
+          }),
+          stressDistribution: [
+            {
+              name: "Low",
+              value:
+                stressDistribution.find(
+                  (s: any) => s._id?.toLowerCase() === "low"
+                )?.count || 0,
+            },
+            {
+              name: "Moderate",
+              value:
+                stressDistribution.find(
+                  (s: any) => s._id?.toLowerCase() === "moderate"
+                )?.count || 0,
+            },
+            {
+              name: "High",
+              value:
+                stressDistribution.find(
+                  (s: any) => s._id?.toLowerCase() === "high"
+                )?.count || 0,
+            },
+          ],
         },
       });
     }
 
     if (payload.role === "officer") {
-      // Officer sees personal statistics
       const myAssessments = await StressAssessment.countDocuments({
         officerId: payload.id,
       });
@@ -61,47 +132,91 @@ export async function GET(request: NextRequest) {
         officerId: payload.id,
       }).sort({ createdAt: -1 });
 
-      const myBookings = await CounselingSession.countDocuments({
+      const myBookings = await Appointment.countDocuments({
         officerId: payload.id,
       });
-      const upcomingAppointments = await CounselingSession.countDocuments({
+      const upcomingAppointments = await Appointment.countDocuments({
         officerId: payload.id,
         date: { $gte: new Date() },
       });
+
+      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
+      const stressProgress = await StressAssessment.aggregate([
+        {
+          $match: {
+            officerId: payload.id,
+            createdAt: { $gte: thirtyDaysAgo },
+          },
+        },
+        {
+          $group: {
+            _id: {
+              $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
+            },
+            score: { $avg: "$totalScore" },
+          },
+        },
+        {
+          $sort: { _id: 1 },
+        },
+      ]);
 
       return NextResponse.json({
         role: "officer",
         stats: {
           totalAssessments: myAssessments,
           lastStressLevel: recentAssessment?.stressLevel || "not-assessed",
-          lastScore: (recentAssessment as any)?.score || 0,
+          lastScore: recentAssessment?.totalScore || 0,
           totalBookings: myBookings,
           upcomingAppointments,
+        },
+        charts: {
+          stressProgress: Array.from({ length: 30 }, (_, i) => {
+            const date = new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000);
+            const dateStr = date.toISOString().split("T")[0];
+            const found = stressProgress.find(
+              (item: any) => item._id === dateStr
+            );
+            return {
+              date: dateStr,
+              score: found?.score ? Math.round(found.score) : 0,
+            };
+          }),
         },
       });
     }
 
     if (payload.role === "counselor") {
-      // Counselor sees assigned officers summary
       const assignedOfficers = await User.countDocuments({
         assignedCounselor: payload.id,
       });
-      const totalSessions = await CounselingSession.countDocuments({
+      const totalSessions = await Appointment.countDocuments({
         counselorId: payload.id,
       });
-      const upcomingSessions = await CounselingSession.countDocuments({
+      const upcomingSessions = await Appointment.countDocuments({
         counselorId: payload.id,
         date: { $gte: new Date() },
       });
 
-      // Get high stress officers
+      const sessionDistribution = await Appointment.aggregate([
+        {
+          $match: { counselorId: payload.id },
+        },
+        {
+          $group: {
+            _id: "$status",
+            count: { $sum: 1 },
+          },
+        },
+      ]);
+
       const highStressOfficers = await StressAssessment.aggregate([
         {
           $match: {
             stressLevel: "high",
             createdAt: {
               $gte: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
-            }, // Last 30 days
+            },
           },
         },
         { $group: { _id: "$officerId" } },
@@ -115,6 +230,28 @@ export async function GET(request: NextRequest) {
           totalSessions,
           upcomingSessions,
           highStressOfficersCount: highStressOfficers[0]?.total || 0,
+        },
+        charts: {
+          sessionDistribution: [
+            {
+              status: "Scheduled",
+              count:
+                sessionDistribution.find((s: any) => s._id === "scheduled")
+                  ?.count || 0,
+            },
+            {
+              status: "Completed",
+              count:
+                sessionDistribution.find((s: any) => s._id === "completed")
+                  ?.count || 0,
+            },
+            {
+              status: "Cancelled",
+              count:
+                sessionDistribution.find((s: any) => s._id === "cancelled")
+                  ?.count || 0,
+            },
+          ],
         },
       });
     }
