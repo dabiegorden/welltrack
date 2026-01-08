@@ -256,9 +256,12 @@ function UsersContent() {
                       </TableCell>
                       <TableCell className="py-4">
                         <p className="text-sm text-gray-400">
-                          {new Date(user.createdAt).toLocaleDateString()}
+                          {user.createdAt
+                            ? new Date(user.createdAt).toLocaleDateString()
+                            : "—"}
                         </p>
                       </TableCell>
+
                       <TableCell className="text-right py-4">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>

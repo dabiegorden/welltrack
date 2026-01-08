@@ -84,7 +84,7 @@ export default function AppointmentsPage() {
       setLoading(true);
       await Promise.all([fetchAppointments(), fetchUsers()]);
     } catch (error) {
-      console.error("[v0] Error fetching data:", error);
+      console.error("Error fetching data:", error);
       toast.error("Failed to fetch data");
     } finally {
       setLoading(false);

@@ -41,7 +41,7 @@ export async function GET(request: Request) {
     if (role) query.role = role;
 
     const users = await User.find(query).select(
-      "firstname lastname email role"
+      "firstname lastname email role phone address createdAt"
     );
 
     return NextResponse.json({ users });
