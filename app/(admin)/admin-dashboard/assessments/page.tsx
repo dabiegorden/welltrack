@@ -1,7 +1,6 @@
 "use client";
 
 import type React from "react";
-
 import { useEffect, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -27,32 +26,48 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, MoreHorizontal, Trash2, Eye, Edit2, X } from "lucide-react";
+import {
+  Plus,
+  MoreHorizontal,
+  Trash2,
+  Eye,
+  Edit2,
+  X,
+  Loader2,
+} from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 
 interface Assessment {
   _id: string;
-  officerId: string;
+  officerId: any;
   totalScore: number;
   stressLevel: "low" | "moderate" | "high";
+  responses: Array<{ questionId: string; questionText: string; score: number }>;
   completedAt: string;
   createdAt: string;
-  questions?: Array<{ question: string; score: number }>;
+  templateId: any;
 }
 
 interface Template {
   _id: string;
   name: string;
   description: string;
-  category: string;
   questions: Array<{ text: string; category?: string }>;
+  maxScore?: number;
+}
+
+interface User {
+  _id: string;
+  name: string;
+  role: string;
 }
 
 export default function AssessmentsPage() {
   const [assessments, setAssessments] = useState<Assessment[]>([]);
   const [templates, setTemplates] = useState<Template[]>([]);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
   const [showTemplateForm, setShowTemplateForm] = useState(false);
   const [selectedAssessment, setSelectedAssessment] =
     useState<Assessment | null>(null);
@@ -65,9 +80,34 @@ export default function AssessmentsPage() {
   });
 
   useEffect(() => {
-    fetchAssessments();
-    fetchTemplates();
+    fetchUser();
   }, []);
+
+  useEffect(() => {
+    if (user?.role === "admin") {
+      fetchAssessments();
+      fetchTemplates();
+    }
+  }, [user]);
+
+  const fetchUser = async () => {
+    try {
+      const response = await fetch("/api/auth/profile");
+      const result = await response.json();
+      setUser(result.user);
+
+      if (result.user?.role === "officer") {
+        window.location.href = "/admin-dashboard/assessments/intake";
+      } else if (result.user?.role === "counselor") {
+        window.location.href = "/admin-dashboard";
+      }
+    } catch (error) {
+      console.error("[v0] Failed to fetch user:", error);
+      toast.error("Failed to load user info");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const fetchAssessments = async () => {
     try {
@@ -75,6 +115,7 @@ export default function AssessmentsPage() {
       const result = await response.json();
       setAssessments(result.data || []);
     } catch (error) {
+      console.error("[v0] Error fetching assessments:", error);
       toast.error("Failed to fetch assessments");
     }
   };
@@ -85,10 +126,8 @@ export default function AssessmentsPage() {
       const result = await response.json();
       setTemplates(result.templates || result.data || []);
     } catch (error) {
-      console.error("Error fetching templates:", error);
+      console.error("[v0] Error fetching templates:", error);
       toast.error("Failed to fetch templates");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -179,6 +218,7 @@ export default function AssessmentsPage() {
       toast.success("Template deleted successfully");
       fetchTemplates();
     } catch (error) {
+      console.error("[v0] Error deleting template:", error);
       toast.error("Failed to delete template");
     }
   };
@@ -195,20 +235,6 @@ export default function AssessmentsPage() {
     }
   };
 
-  const handleDialogOpenChange = (open: boolean) => {
-    if (!open) {
-      setShowTemplateForm(false);
-      setEditingTemplate(null);
-      setTemplateForm({
-        name: "",
-        description: "",
-        questions: [{ text: "", category: "wellbeing" }],
-      });
-    } else {
-      setShowTemplateForm(true);
-    }
-  };
-
   const handleDeleteAssessment = async (id: string) => {
     if (!confirm("Are you sure?")) return;
     try {
@@ -219,6 +245,7 @@ export default function AssessmentsPage() {
       toast.success("Assessment deleted");
       fetchAssessments();
     } catch (error) {
+      console.error("[v0] Error deleting assessment:", error);
       toast.error("Failed to delete assessment");
     }
   };
@@ -236,6 +263,18 @@ export default function AssessmentsPage() {
     }
   };
 
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-96">
+        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
+
+  if (!user || user.role !== "admin") {
+    return null;
+  }
+
   return (
     <div className="space-y-6 py-12">
       <div className="grid gap-4 md:grid-cols-2">
@@ -243,9 +282,12 @@ export default function AssessmentsPage() {
           <h1 className="text-3xl font-bold text-foreground mb-4">
             Assessment Management
           </h1>
+          <p className="text-muted-foreground">
+            Manage templates and view submitted assessments
+          </p>
         </div>
         <div className="flex gap-2 items-start">
-          <Dialog open={showTemplateForm} onOpenChange={handleDialogOpenChange}>
+          <Dialog open={showTemplateForm} onOpenChange={setShowTemplateForm}>
             <DialogTrigger asChild>
               <Button className="gap-2">
                 <Plus className="h-4 w-4" />
@@ -408,10 +450,10 @@ export default function AssessmentsPage() {
             <CardTitle>Submitted Assessments ({assessments.length})</CardTitle>
           </CardHeader>
           <CardContent>
-            {loading ? (
-              <p className="text-muted-foreground">Loading...</p>
-            ) : assessments.length === 0 ? (
-              <p className="text-muted-foreground">No assessments submitted</p>
+            {assessments.length === 0 ? (
+              <p className="text-muted-foreground">
+                No assessments submitted yet
+              </p>
             ) : (
               <div className="overflow-x-auto">
                 <Table>
@@ -426,11 +468,12 @@ export default function AssessmentsPage() {
                   <TableBody>
                     {assessments.slice(0, 5).map((assessment) => (
                       <TableRow key={assessment._id}>
-                        <TableCell className="font-mono text-xs">
-                          {assessment.officerId.slice(0, 8)}
+                        <TableCell className="font-medium text-sm">
+                          {assessment.officerId?.firstname || "Unknown"}{" "}
+                          {assessment.officerId?.lastname || ""}
                         </TableCell>
                         <TableCell className="font-medium">
-                          {assessment.totalScore}/100
+                          {assessment.totalScore}
                         </TableCell>
                         <TableCell>
                           <Badge
@@ -481,19 +524,25 @@ export default function AssessmentsPage() {
       {selectedAssessment && (
         <Card>
           <CardHeader>
-            <CardTitle>Assessment Details</CardTitle>
+            <CardTitle>
+              Assessment Details - {selectedAssessment.officerId?.firstname}{" "}
+              {selectedAssessment.officerId?.lastname}
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Officer ID</p>
-                  <p className="font-mono">{selectedAssessment.officerId}</p>
+                  <p className="text-sm text-muted-foreground">Officer</p>
+                  <p className="font-medium">
+                    {selectedAssessment.officerId?.firstname}{" "}
+                    {selectedAssessment.officerId?.lastname}
+                  </p>
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Total Score</p>
                   <p className="text-lg font-bold">
-                    {selectedAssessment.totalScore}/100
+                    {selectedAssessment.totalScore}
                   </p>
                 </div>
                 <div>
@@ -507,20 +556,28 @@ export default function AssessmentsPage() {
                 <div>
                   <p className="text-sm text-muted-foreground">Completed At</p>
                   <p>
-                    {new Date(selectedAssessment.completedAt).toLocaleString()}
+                    {new Date(
+                      selectedAssessment.completedAt ||
+                        selectedAssessment.createdAt
+                    ).toLocaleString()}
                   </p>
                 </div>
               </div>
-              {selectedAssessment.questions &&
-                selectedAssessment.questions.length > 0 && (
+              {selectedAssessment.responses &&
+                selectedAssessment.responses.length > 0 && (
                   <div className="border-t pt-4">
                     <p className="font-semibold mb-3">Responses</p>
-                    <div className="space-y-2">
-                      {selectedAssessment.questions.map((q, i) => (
-                        <div key={i} className="text-sm border rounded p-2">
-                          <p className="font-medium">{q.question}</p>
-                          <p className="text-muted-foreground">
-                            Score: {q.score}
+                    <div className="space-y-3">
+                      {selectedAssessment.responses.map((response, i) => (
+                        <div
+                          key={i}
+                          className="border rounded-lg p-3 bg-muted/50"
+                        >
+                          <p className="font-medium text-sm">
+                            {response.questionText}
+                          </p>
+                          <p className="text-sm text-muted-foreground mt-1">
+                            Score: {response.score}/4
                           </p>
                         </div>
                       ))}

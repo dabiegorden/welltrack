@@ -1,47 +1,31 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { verifyToken } from "@/lib/auth";
+import { cookies } from "next/headers";
 import { connectDB } from "@/lib/config/mongodb";
 import AssessmentTemplate from "@/lib/models/AssessmentTemplate";
-import { requireRole } from "@/lib/middleware/auth-middleware";
-
-export async function GET(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
-    await connectDB();
-
-    const template = await AssessmentTemplate.findById(id);
-    if (!template) {
-      return NextResponse.json(
-        { error: "Template not found" },
-        { status: 404 }
-      );
-    }
-
-    return NextResponse.json({ template });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-}
 
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await requireRole(request, "admin");
-    const { id } = await params;
+    const cookieStore = await cookies();
+    const token = cookieStore.get("token")?.value;
 
-    const body = await request.json();
-    const { name, description, questions } = body;
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    if (!name || !questions || questions.length === 0) {
+    const payload = verifyToken(token);
+    if (!payload || payload.role !== "admin") {
       return NextResponse.json(
-        { error: "Name and at least one question are required" },
-        { status: 400 }
+        { error: "Only admins can update templates" },
+        { status: 403 }
       );
     }
+
+    const { id } = await params;
+    const { name, description, questions } = await request.json();
 
     await connectDB();
 
@@ -50,10 +34,7 @@ export async function PUT(
       {
         name,
         description,
-        questions: questions.map((q: any) => ({
-          text: q.text || q.question,
-          category: q.category || "wellbeing",
-        })),
+        questions,
         maxScore: questions.length * 4,
       },
       { new: true }
@@ -66,15 +47,16 @@ export async function PUT(
       );
     }
 
-    return NextResponse.json({ template });
-  } catch (error: any) {
-    if (error.message === "Forbidden") {
-      return NextResponse.json(
-        { error: "Only admins can update templates" },
-        { status: 403 }
-      );
-    }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({
+      template,
+      message: "Template updated successfully",
+    });
+  } catch (error) {
+    console.error("[v0] Error updating template:", error);
+    return NextResponse.json(
+      { error: "Failed to update template" },
+      { status: 500 }
+    );
   }
 }
 
@@ -83,12 +65,27 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const auth = await requireRole(request, "admin");
+    const cookieStore = await cookies();
+    const token = cookieStore.get("token")?.value;
+
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const payload = verifyToken(token);
+    if (!payload || payload.role !== "admin") {
+      return NextResponse.json(
+        { error: "Only admins can delete templates" },
+        { status: 403 }
+      );
+    }
+
     const { id } = await params;
 
     await connectDB();
 
     const template = await AssessmentTemplate.findByIdAndDelete(id);
+
     if (!template) {
       return NextResponse.json(
         { error: "Template not found" },
@@ -97,13 +94,11 @@ export async function DELETE(
     }
 
     return NextResponse.json({ message: "Template deleted successfully" });
-  } catch (error: any) {
-    if (error.message === "Forbidden") {
-      return NextResponse.json(
-        { error: "Only admins can delete templates" },
-        { status: 403 }
-      );
-    }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    console.error("[v0] Error deleting template:", error);
+    return NextResponse.json(
+      { error: "Failed to delete template" },
+      { status: 500 }
+    );
   }
 }

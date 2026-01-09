@@ -1,95 +1,82 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { verifyToken } from "@/lib/auth";
+import { cookies } from "next/headers";
 import { connectDB } from "@/lib/config/mongodb";
 import AssessmentTemplate from "@/lib/models/AssessmentTemplate";
-import { requireRole } from "@/lib/middleware/auth-middleware";
-import z from "zod";
-
-const CreateTemplateSchema = z.object({
-  name: z.string().min(1, "Template name is required"),
-  description: z.string().optional(),
-  questions: z
-    .array(
-      z.object({
-        text: z.string().min(1, "Question text is required"),
-        category: z
-          .enum(["workload", "support", "wellbeing", "environment"])
-          .optional(),
-      })
-    )
-    .min(1, "At least one question is required"),
-});
 
 export async function GET(request: NextRequest) {
   try {
+    const cookieStore = await cookies();
+    const token = cookieStore.get("token")?.value;
+
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const payload = verifyToken(token);
+    if (!payload) {
+      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+    }
+
     await connectDB();
 
-    const templates = await AssessmentTemplate.find({ isActive: true }).select(
-      "-createdBy"
-    );
+    const templates = await AssessmentTemplate.find().sort({ createdAt: -1 });
 
     return NextResponse.json({ templates, data: templates });
-  } catch (error: any) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  } catch (error) {
+    console.error("[v0] Error fetching templates:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch templates" },
+      { status: 500 }
+    );
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
-    const auth = await requireRole(request, "admin");
+    const cookieStore = await cookies();
+    const token = cookieStore.get("token")?.value;
 
-    const body = await request.json();
+    if (!token) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
-    const validatedData = {
-      name: body.name || body.title,
-      description: body.description,
-      questions: (body.questions || [])
-        .filter((q: any) => q.text && q.text.trim())
-        .map((q: any) => ({
-          text: q.text || q.question,
-          category: q.category || "wellbeing",
-        })),
-    };
-
-    if (!validatedData.name) {
+    const payload = verifyToken(token);
+    if (!payload || payload.role !== "admin") {
       return NextResponse.json(
-        { error: "Template name is required" },
-        { status: 400 }
+        { error: "Only admins can create templates" },
+        { status: 403 }
       );
     }
 
-    if (validatedData.questions.length === 0) {
+    const { name, description, questions } = await request.json();
+
+    if (!name || !questions || !Array.isArray(questions)) {
       return NextResponse.json(
-        { error: "At least one question is required" },
+        { error: "Invalid template data" },
         { status: 400 }
       );
     }
 
     await connectDB();
 
-    const maxScore = validatedData.questions.length * 4;
-
     const template = await AssessmentTemplate.create({
-      ...validatedData,
-      maxScore,
-      createdBy: auth.userId,
-      isActive: true,
+      name,
+      description,
+      questions,
+      maxScore: questions.length * 4,
+      createdBy: payload.id,
     });
 
-    return NextResponse.json({ template, data: template }, { status: 201 });
-  } catch (error: any) {
-    console.error("[v0] Template creation error:", error);
-    if (error instanceof z.ZodError) {
-      return NextResponse.json({ error: error.issues }, { status: 400 });
-    }
-    if (error.message === "Unauthorized") {
-      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-    }
-    if (error.message === "Forbidden") {
-      return NextResponse.json(
-        { error: "Only admins can create templates" },
-        { status: 403 }
-      );
-    }
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json(
+      { template, message: "Template created successfully" },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error("[v0] Error creating template:", error);
+    return NextResponse.json(
+      { error: "Failed to create template" },
+      { status: 500 }
+    );
   }
 }

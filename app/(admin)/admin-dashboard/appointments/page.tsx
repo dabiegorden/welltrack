@@ -48,8 +48,8 @@ interface User {
 
 interface Appointment {
   _id: string;
-  officerId: User;
-  counselorId: User;
+  officerId: User | null;
+  counselorId: User | null;
   date: string;
   duration: number;
   status: "scheduled" | "completed" | "cancelled";
@@ -118,13 +118,13 @@ export default function AppointmentsPage() {
       const officersData = await officersRes.json();
       const counselorsData = await counselorsRes.json();
 
-      console.log("[v0] Officers fetched:", officersData);
-      console.log("[v0] Counselors fetched:", counselorsData);
+      console.log("Officers fetched:", officersData);
+      console.log("Counselors fetched:", counselorsData);
 
       setOfficers(officersData.users || []);
       setCounselors(counselorsData.users || []);
     } catch (error) {
-      console.error("[v0] Error fetching users:", error);
+      console.error("Error fetching users:", error);
       toast.error("Failed to fetch officers and counselors");
     }
   };
@@ -133,9 +133,12 @@ export default function AppointmentsPage() {
     e.preventDefault();
     try {
       const submitData = {
-        ...formData,
-        officerId: userType === "officer" ? formData.officerId : "",
-        counselorId: userType === "counselor" ? formData.counselorId : "",
+        date: formData.date,
+        duration: formData.duration,
+        status: formData.status,
+        notes: formData.notes,
+        officerId: userType === "officer" ? formData.officerId : null,
+        counselorId: userType === "counselor" ? formData.counselorId : null,
       };
 
       console.log("[v0] Submitting appointment:", submitData);
@@ -193,20 +196,16 @@ export default function AppointmentsPage() {
 
   const handleEdit = (appointment: Appointment) => {
     setEditingId(appointment._id);
+
     setFormData({
-      officerId:
-        typeof appointment.officerId === "string"
-          ? appointment.officerId
-          : appointment.officerId._id,
-      counselorId:
-        typeof appointment.counselorId === "string"
-          ? appointment.counselorId
-          : appointment.counselorId._id,
+      officerId: appointment.officerId?._id || "",
+      counselorId: appointment.counselorId?._id || "",
       date: new Date(appointment.date).toISOString().slice(0, 16),
       duration: appointment.duration,
       status: appointment.status,
       notes: appointment.notes || "",
     });
+
     setUserType(appointment.officerId ? "officer" : "counselor");
     setOpen(true);
   };
@@ -446,8 +445,8 @@ export default function AppointmentsPage() {
                     <TableRow key={apt._id}>
                       <TableCell className="text-sm font-medium">
                         {apt.officerId
-                          ? `${apt.officerId.firstname} ${apt.officerId.lastname}`
-                          : `${apt.counselorId.firstname} ${apt.counselorId.lastname}`}
+                          ? `${apt.officerId?.firstname} ${apt.officerId?.lastname}`
+                          : `${apt.counselorId?.firstname} ${apt.counselorId?.lastname}`}
                       </TableCell>
 
                       <TableCell>

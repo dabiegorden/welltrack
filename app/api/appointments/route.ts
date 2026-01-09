@@ -164,7 +164,13 @@ export async function PUT(request: NextRequest) {
     if (!payload) return forbidden();
 
     const body = await request.json();
-    const { id, ...updates } = body;
+    const { id, officerId, counselorId, ...rest } = body;
+
+    const updates: any = {
+      ...rest,
+      officerId: officerId || null,
+      counselorId: counselorId || null,
+    };
 
     if (!id) {
       return NextResponse.json(

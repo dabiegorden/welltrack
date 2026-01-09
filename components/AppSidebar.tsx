@@ -87,11 +87,11 @@ export const officerMenu = [
         url: "/admin-dashboard/assessments",
         icon: Signal,
       },
-      {
-        title: "My Progress",
-        url: "/admin-dashboard/progress",
-        icon: TrendingUp,
-      },
+      // {
+      //   title: "My Progress",
+      //   url: "/admin-dashboard/progress",
+      //   icon: TrendingUp,
+      // },
     ],
   },
   {
@@ -109,16 +109,16 @@ export const officerMenu = [
       },
     ],
   },
-  {
-    title: "Resources",
-    items: [
-      {
-        title: "Wellness Library",
-        url: "/admin-dashboard/resources",
-        icon: FileText,
-      },
-    ],
-  },
+  // {
+  //   title: "Resources",
+  //   items: [
+  //     {
+  //       title: "Wellness Library",
+  //       url: "/admin-dashboard/resources",
+  //       icon: FileText,
+  //     },
+  //   ],
+  // },
 ];
 
 export const counselorMenu = [
@@ -135,28 +135,28 @@ export const counselorMenu = [
         url: "/admin-dashboard/counselor/appointments",
         icon: Calendar,
       },
-      {
-        title: "Assigned Officers",
-        url: "/admin-dashboard/counselor/officers",
-        icon: Users,
-      },
-      {
-        title: "Session Notes",
-        url: "/admin-dashboard/counselor/notes",
-        icon: FileText,
-      },
+      // {
+      //   title: "Assigned Officers",
+      //   url: "/admin-dashboard/counselor/officers",
+      //   icon: Users,
+      // },
+      // {
+      //   title: "Session Notes",
+      //   url: "/admin-dashboard/counselor/notes",
+      //   icon: FileText,
+      // },
     ],
   },
-  {
-    title: "Resources",
-    items: [
-      {
-        title: "Wellness Materials",
-        url: "/admin-dashboard/counselor/resources",
-        icon: BookOpen,
-      },
-    ],
-  },
+  // {
+  //   title: "Resources",
+  //   items: [
+  //     {
+  //       title: "Wellness Materials",
+  //       url: "/admin-dashboard/counselor/resources",
+  //       icon: BookOpen,
+  //     },
+  //   ],
+  // },
 ];
 
 export function getSidebarMenu(role: "admin" | "officer" | "counselor") {
