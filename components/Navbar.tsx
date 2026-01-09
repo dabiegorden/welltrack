@@ -130,7 +130,6 @@ const Navbar = () => {
   const navLinks = [
     { name: "Home", href: "/" },
     { name: "Features", href: "#features" },
-    { name: "Contact", href: "#contact" },
   ];
 
   return (

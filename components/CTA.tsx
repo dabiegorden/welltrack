@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 const CTA = () => {
   return (
     <section className="py-24 bg-white">
@@ -14,14 +16,16 @@ const CTA = () => {
               health. Start your journey today.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center max-w-md mx-auto">
-              <input
+              {/* <input
                 type="email"
                 placeholder="Enter your email"
                 className="flex-1 px-6 py-4 rounded-full border-0 focus:outline-none focus:ring-2 focus:ring-white/50 shadow-lg"
-              />
-              <button className="px-8 py-4 bg-slate-900 text-white rounded-full font-semibold hover:bg-slate-800 hover:shadow-xl transition-all duration-200 whitespace-nowrap">
-                Get Started
-              </button>
+              /> */}
+              <Link href={"/sign-in"}>
+                <button className="px-8 py-4 bg-slate-900 text-white rounded-full font-semibold hover:bg-slate-800 hover:shadow-xl transition-all duration-200 whitespace-nowrap">
+                  Get Started
+                </button>
+              </Link>
             </div>
           </div>
         </div>
