@@ -102,11 +102,6 @@ export const officerMenu = [
         url: "/admin-dashboard/counseling",
         icon: Calendar,
       },
-      {
-        title: "Peer Forum",
-        url: "/admin-dashboard/forum",
-        icon: MessageSquare,
-      },
     ],
   },
   // {

@@ -11,16 +11,16 @@ export async function POST(request: Request) {
       await request.json();
 
     // Check if an admin already exists to prevent multiple admins via this endpoint
-    const existingAdmin = await User.findOne({ role: "admin" });
-    if (existingAdmin) {
-      return NextResponse.json(
-        {
-          error:
-            "Admin already exists. Use the dashboard to create other users.",
-        },
-        { status: 403 }
-      );
-    }
+    // const existingAdmin = await User.findOne({ role: "admin" });
+    // if (existingAdmin) {
+    //   return NextResponse.json(
+    //     {
+    //       error:
+    //         "Admin already exists. Use the dashboard to create other users.",
+    //     },
+    //     { status: 403 }
+    //   );
+    // }
 
     const hashedPassword = await bcrypt.hash(password, 12);
 
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
           role: newAdmin.role,
         },
       },
-      { status: 201 }
+      { status: 201 },
     );
 
     response.cookies.set("token", token, {
