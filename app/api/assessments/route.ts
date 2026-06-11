@@ -2,7 +2,6 @@ import { type NextRequest, NextResponse } from "next/server";
 import { verifyToken } from "@/lib/auth";
 import { cookies } from "next/headers";
 import { connectDB } from "@/lib/config/mongodb";
-import User from "@/lib/models/User";
 import AssessmentResponse from "@/lib/models/AssessmentRespons";
 
 export async function GET(request: NextRequest) {
@@ -35,16 +34,8 @@ export async function GET(request: NextRequest) {
         .populate("templateId", "name")
         .sort({ createdAt: -1 });
     } else if (payload.role === "counselor") {
-      // Counselors see assessments of assigned officers
-      const assignedOfficers = await User.find(
-        { assignedCounselor: payload.id },
-        "_id"
-      );
-      const officerIds = assignedOfficers.map((o) => o._id);
-
-      assessments = await AssessmentResponse.find({
-        officerId: { $in: officerIds },
-      })
+      // Counselors can view all officers' assessment results
+      assessments = await AssessmentResponse.find()
         .populate("officerId", "firstname lastname email")
         .populate("templateId", "name")
         .sort({ createdAt: -1 });

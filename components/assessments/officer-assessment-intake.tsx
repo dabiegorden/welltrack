@@ -11,9 +11,9 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
-import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertCircle, CheckCircle, Loader2 } from "lucide-react";
+import { CheckCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { STRESS_MANAGEMENT_TIPS } from "@/constants/stress-tips";
 
 interface Question {
   _id: string;
@@ -25,7 +25,7 @@ interface AssessmentIntakeProps {
   templateId: string;
   templateName: string;
   questions: Question[];
-  onComplete?: (result: "low" | "moderate" | "high") => void;
+  onComplete?: () => void;
 }
 
 export function OfficerAssessmentIntake({
@@ -81,8 +81,7 @@ export function OfficerAssessmentIntake({
       setSubmitted(true);
       toast.success("Assessment submitted successfully");
 
-      // ✅ THIS IS THE LINE YOU WERE ASKING ABOUT
-      onComplete?.(data.stressLevel);
+      onComplete?.();
     } catch (error) {
       console.error("[v0] Assessment submission error:", error);
       toast.error("Failed to submit assessment");
@@ -103,49 +102,28 @@ export function OfficerAssessmentIntake({
                   Assessment Completed
                 </CardTitle>
                 <CardDescription>
-                  Your responses have been recorded
+                  Your responses have been recorded and will be reviewed by a
+                  wellness counselor.
                 </CardDescription>
               </div>
             </div>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <p className="text-sm text-gray-400">Total Score</p>
-                <p className="text-2xl font-bold text-white">
-                  {result.totalScore}
-                </p>
-              </div>
-              <div>
-                <p className="text-sm text-gray-400">Stress Level</p>
-                <p className="text-2xl font-bold capitalize text-yellow-400">
-                  {result.stressLevel}
-                </p>
-              </div>
-            </div>
-
-            {result.stressLevel === "high" && (
-              <Alert className="border-red-500/30 bg-red-50/5">
-                <AlertCircle className="h-4 w-4 text-red-500" />
-                <AlertDescription className="text-red-300">
-                  Your assessment indicates high stress levels. We recommend
-                  booking a counseling session with a professional who can
-                  provide personalized support.
-                </AlertDescription>
-              </Alert>
-            )}
+            <p className="text-sm text-gray-400">
+              Thank you for taking the time to complete this assessment. Your
+              results are confidential and shared only with our wellness
+              counselors, who may reach out to offer support.
+            </p>
 
             <div className="flex gap-3">
-              {result.stressLevel === "high" && (
-                <Button
-                  className="flex-1 bg-red-600 hover:bg-red-700"
-                  onClick={() =>
-                    (window.location.href = "/admin-dashboard/counseling")
-                  }
-                >
-                  Book a Counselor
-                </Button>
-              )}
+              <Button
+                className="flex-1 bg-red-600 hover:bg-red-700"
+                onClick={() =>
+                  (window.location.href = "/admin-dashboard/counseling")
+                }
+              >
+                Book a Counselor
+              </Button>
               <Button
                 variant="outline"
                 className="flex-1 bg-transparent"
@@ -154,6 +132,24 @@ export function OfficerAssessmentIntake({
                 Back to Dashboard
               </Button>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gray-900 border-gray-800">
+          <CardHeader>
+            <CardTitle className="text-white">Manage Your Stress</CardTitle>
+            <CardDescription>
+              A few tips that may help while you wait to hear from a
+              counselor
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {STRESS_MANAGEMENT_TIPS.map((tip) => (
+              <div key={tip.title}>
+                <p className="font-medium text-white">{tip.title}</p>
+                <p className="text-sm text-gray-400">{tip.description}</p>
+              </div>
+            ))}
           </CardContent>
         </Card>
       </div>

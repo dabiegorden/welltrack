@@ -10,8 +10,13 @@ const assessmentResponseSchema = new mongoose.Schema(
     templateId: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "AssessmentTemplate",
-      required: true,
     },
+    source: {
+      type: String,
+      enum: ["form", "ai-chat"],
+      default: "form",
+    },
+    inputText: String,
     responses: [
       {
         questionId: String,
@@ -37,6 +42,15 @@ const assessmentResponseSchema = new mongoose.Schema(
       default: "moderate",
     },
     notes: String,
+    aiAnalysis: {
+      summary: String,
+      riskLevel: {
+        type: String,
+        enum: ["low", "moderate", "high"],
+      },
+      recommendations: [String],
+      generatedAt: Date,
+    },
     completedAt: {
       type: Date,
       default: Date.now,

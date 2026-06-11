@@ -3,7 +3,7 @@ import { verifyToken } from "@/lib/auth";
 import { cookies } from "next/headers";
 import { connectDB } from "@/lib/config/mongodb";
 import User from "@/lib/models/User";
-import StressAssessment from "@/lib/models/StressAssessment";
+import AssessmentResponse from "@/lib/models/AssessmentRespons";
 import Appointment from "@/lib/models/Appointment";
 import Resources from "@/lib/models/Resources";
 import AssessmentTemplate from "@/lib/models/AssessmentTemplate";
@@ -27,15 +27,21 @@ export async function GET(request: NextRequest) {
     if (payload.role === "admin") {
       const totalOfficers = await User.countDocuments({ role: "officer" });
       const totalCounselors = await User.countDocuments({ role: "counselor" });
-      const totalAssessments = await StressAssessment.countDocuments();
-      const highStressCount = await StressAssessment.countDocuments({
+      const totalAssessments = await AssessmentResponse.countDocuments();
+      const highStressCount = await AssessmentResponse.countDocuments({
         stressLevel: "high",
       });
       const totalSessions = await Appointment.countDocuments();
       const totalResources = await Resources.countDocuments();
       const totalTemplates = await AssessmentTemplate.countDocuments();
+      const aiHighRiskCount = await AssessmentResponse.countDocuments({
+        "aiAnalysis.riskLevel": "high",
+      });
+      const aiCheckInCount = await AssessmentResponse.countDocuments({
+        source: "ai-chat",
+      });
 
-      const stressDistribution = await StressAssessment.aggregate([
+      const stressDistribution = await AssessmentResponse.aggregate([
         {
           $group: {
             _id: "$stressLevel",
@@ -45,7 +51,7 @@ export async function GET(request: NextRequest) {
       ]);
 
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
-      const assessmentTrend = await StressAssessment.aggregate([
+      const assessmentTrend = await AssessmentResponse.aggregate([
         {
           $match: {
             createdAt: { $gte: sevenDaysAgo },
@@ -64,7 +70,7 @@ export async function GET(request: NextRequest) {
         },
       ]);
 
-      const avgStressData = await StressAssessment.aggregate([
+      const avgStressData = await AssessmentResponse.aggregate([
         {
           $group: {
             _id: null,
@@ -84,6 +90,8 @@ export async function GET(request: NextRequest) {
           totalResources,
           totalTemplates,
           avgStressLevel: avgStressData[0]?.average.toFixed(2) || 0,
+          aiHighRiskCount,
+          aiCheckInCount,
         },
         charts: {
           assessmentTrend: Array.from({ length: 7 }, (_, i) => {
@@ -125,10 +133,10 @@ export async function GET(request: NextRequest) {
     }
 
     if (payload.role === "officer") {
-      const myAssessments = await StressAssessment.countDocuments({
+      const myAssessments = await AssessmentResponse.countDocuments({
         officerId: payload.id,
       });
-      const recentAssessment = await StressAssessment.findOne({
+      const recentAssessment = await AssessmentResponse.findOne({
         officerId: payload.id,
       }).sort({ createdAt: -1 });
 
@@ -140,48 +148,13 @@ export async function GET(request: NextRequest) {
         date: { $gte: new Date() },
       });
 
-      const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
-      const stressProgress = await StressAssessment.aggregate([
-        {
-          $match: {
-            officerId: payload.id,
-            createdAt: { $gte: thirtyDaysAgo },
-          },
-        },
-        {
-          $group: {
-            _id: {
-              $dateToString: { format: "%Y-%m-%d", date: "$createdAt" },
-            },
-            score: { $avg: "$totalScore" },
-          },
-        },
-        {
-          $sort: { _id: 1 },
-        },
-      ]);
-
       return NextResponse.json({
         role: "officer",
         stats: {
           totalAssessments: myAssessments,
-          lastStressLevel: recentAssessment?.stressLevel || "not-assessed",
-          lastScore: recentAssessment?.totalScore || 0,
+          lastAssessmentDate: recentAssessment?.createdAt || null,
           totalBookings: myBookings,
           upcomingAppointments,
-        },
-        charts: {
-          stressProgress: Array.from({ length: 30 }, (_, i) => {
-            const date = new Date(Date.now() - (29 - i) * 24 * 60 * 60 * 1000);
-            const dateStr = date.toISOString().split("T")[0];
-            const found = stressProgress.find(
-              (item: any) => item._id === dateStr
-            );
-            return {
-              date: dateStr,
-              score: found?.score ? Math.round(found.score) : 0,
-            };
-          }),
         },
       });
     }
@@ -210,7 +183,7 @@ export async function GET(request: NextRequest) {
         },
       ]);
 
-      const highStressOfficers = await StressAssessment.aggregate([
+      const highStressOfficers = await AssessmentResponse.aggregate([
         {
           $match: {
             stressLevel: "high",
@@ -223,6 +196,11 @@ export async function GET(request: NextRequest) {
         { $count: "total" },
       ]);
 
+      const totalAssessments = await AssessmentResponse.countDocuments();
+      const aiHighRiskCount = await AssessmentResponse.countDocuments({
+        "aiAnalysis.riskLevel": "high",
+      });
+
       return NextResponse.json({
         role: "counselor",
         stats: {
@@ -230,6 +208,8 @@ export async function GET(request: NextRequest) {
           totalSessions,
           upcomingSessions,
           highStressOfficersCount: highStressOfficers[0]?.total || 0,
+          totalAssessments,
+          aiHighRiskCount,
         },
         charts: {
           sessionDistribution: [

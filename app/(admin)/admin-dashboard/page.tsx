@@ -27,10 +27,19 @@ import {
   Loader2,
   FileText,
   Clipboard,
+  Sparkles,
 } from "lucide-react";
 import useSWR from "swr";
+import { STRESS_MANAGEMENT_TIPS } from "@/constants/stress-tips";
 
 const fetcher = (url: string) => fetch(url).then((r) => r.json());
+
+const formatDate = (dateString: string) =>
+  new Date(dateString).toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
 
 interface AdminStats {
   totalOfficers: number;
@@ -41,12 +50,13 @@ interface AdminStats {
   totalResources: number;
   totalTemplates: number;
   avgStressLevel: number;
+  aiHighRiskCount: number;
+  aiCheckInCount: number;
 }
 
 interface OfficerStats {
   totalAssessments: number;
-  lastStressLevel: string;
-  lastScore: number;
+  lastAssessmentDate: string | null;
   totalBookings: number;
   upcomingAppointments: number;
 }
@@ -56,6 +66,8 @@ interface CounselorStats {
   totalSessions: number;
   upcomingSessions: number;
   highStressOfficersCount: number;
+  totalAssessments: number;
+  aiHighRiskCount: number;
 }
 
 type Stats = AdminStats | OfficerStats | CounselorStats;
@@ -253,6 +265,38 @@ export default function DashboardPage() {
                 </div>
               </CardContent>
             </Card>
+
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-400">
+                  AI High-Risk Flags
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="text-2xl font-bold text-white">
+                    {(data.stats as AdminStats).aiHighRiskCount}
+                  </div>
+                  <Sparkles className="h-8 w-8 text-red-400" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-400">
+                  AI Check-ins
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="text-2xl font-bold text-white">
+                    {(data.stats as AdminStats).aiCheckInCount}
+                  </div>
+                  <Sparkles className="h-8 w-8 text-blue-400" />
+                </div>
+              </CardContent>
+            </Card>
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -369,18 +413,17 @@ export default function DashboardPage() {
             <Card className="bg-gray-900 border-gray-800">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium text-gray-400">
-                  Current Stress Level
+                  Last Assessment
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="flex items-center justify-between">
-                  <div>
-                    <div className="text-2xl font-bold text-white">
-                      {(data.stats as OfficerStats).lastScore}
-                    </div>
-                    <p className="text-xs text-gray-400 mt-1">
-                      {(data.stats as OfficerStats).lastStressLevel}
-                    </p>
+                  <div className="text-2xl font-bold text-white">
+                    {(data.stats as OfficerStats).lastAssessmentDate
+                      ? formatDate(
+                          (data.stats as OfficerStats).lastAssessmentDate as string
+                        )
+                      : "Not yet taken"}
                   </div>
                   <AlertCircle className="h-8 w-8 text-yellow-500" />
                 </div>
@@ -422,42 +465,18 @@ export default function DashboardPage() {
 
           <Card className="bg-gray-900 border-gray-800">
             <CardHeader>
-              <CardTitle className="text-white">Your Stress Progress</CardTitle>
-              <CardDescription>Trend over time (30 days)</CardDescription>
+              <CardTitle className="text-white">Manage Your Stress</CardTitle>
+              <CardDescription>
+                Tips to help you stay well on and off duty
+              </CardDescription>
             </CardHeader>
-            <CardContent>
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart
-                  data={
-                    data?.charts?.stressProgress &&
-                    data.charts.stressProgress.length > 0
-                      ? data.charts.stressProgress
-                      : DEFAULT_EMPTY_TREND
-                  }
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis stroke="#9CA3AF" dataKey="date" />
-                  <YAxis stroke="#9CA3AF" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#111827",
-                      border: "1px solid #374151",
-                    }}
-                  />
-                  <Line
-                    type="monotone"
-                    dataKey="score"
-                    stroke="#3B82F6"
-                    strokeWidth={2}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-              {(!data?.charts?.stressProgress ||
-                data.charts.stressProgress.length === 0) && (
-                <p className="text-center text-gray-500 text-sm mt-2">
-                  No stress progress data yet
-                </p>
-              )}
+            <CardContent className="space-y-4">
+              {STRESS_MANAGEMENT_TIPS.map((tip) => (
+                <div key={tip.title}>
+                  <p className="font-medium text-white">{tip.title}</p>
+                  <p className="text-sm text-gray-400">{tip.description}</p>
+                </div>
+              ))}
             </CardContent>
           </Card>
         </>
@@ -526,6 +545,38 @@ export default function DashboardPage() {
                     {(data.stats as CounselorStats).highStressOfficersCount}
                   </div>
                   <AlertCircle className="h-8 w-8 text-red-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-400">
+                  Total Assessments
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="text-2xl font-bold text-white">
+                    {(data.stats as CounselorStats).totalAssessments}
+                  </div>
+                  <Clipboard className="h-8 w-8 text-green-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-400">
+                  AI High-Risk Flags
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="text-2xl font-bold text-white">
+                    {(data.stats as CounselorStats).aiHighRiskCount}
+                  </div>
+                  <Sparkles className="h-8 w-8 text-red-400" />
                 </div>
               </CardContent>
             </Card>

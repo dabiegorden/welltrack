@@ -46,6 +46,7 @@ interface Resource {
 export default function ResourcesPage() {
   const [resources, setResources] = useState<Resource[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [formData, setFormData] = useState({
     title: "",
@@ -60,7 +61,18 @@ export default function ResourcesPage() {
 
   useEffect(() => {
     fetchResources();
+    fetchUser();
   }, []);
+
+  const fetchUser = async () => {
+    try {
+      const response = await fetch("/api/auth/profile");
+      const result = await response.json();
+      setIsAdmin(result.user?.role === "admin");
+    } catch (error) {
+      console.error("Failed to fetch user:", error);
+    }
+  };
 
   const fetchResources = async () => {
     try {
@@ -177,6 +189,7 @@ export default function ResourcesPage() {
         <h1 className="text-3xl font-bold text-foreground">
           Wellness Resources
         </h1>
+        {isAdmin && (
         <Dialog open={open} onOpenChange={handleOpenChange}>
           <DialogTrigger asChild>
             <Button className="gap-2">
@@ -280,6 +293,7 @@ export default function ResourcesPage() {
             </form>
           </DialogContent>
         </Dialog>
+        )}
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -305,26 +319,28 @@ export default function ResourcesPage() {
                       </p>
                     </div>
                   </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="sm">
-                        <MoreHorizontal className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => handleEdit(resource)}>
-                        <Edit2 className="h-4 w-4 mr-2" />
-                        Edit
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onClick={() => handleDelete(resource._id)}
-                        className="text-destructive"
-                      >
-                        <Trash2 className="h-4 w-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  {isAdmin && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <MoreHorizontal className="h-4 w-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => handleEdit(resource)}>
+                          <Edit2 className="h-4 w-4 mr-2" />
+                          Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem
+                          onClick={() => handleDelete(resource._id)}
+                          className="text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
               </CardHeader>
               <CardContent className="flex-1 flex flex-col">

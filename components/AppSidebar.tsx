@@ -104,16 +104,16 @@ export const officerMenu = [
       },
     ],
   },
-  // {
-  //   title: "Resources",
-  //   items: [
-  //     {
-  //       title: "Wellness Library",
-  //       url: "/admin-dashboard/resources",
-  //       icon: FileText,
-  //     },
-  //   ],
-  // },
+  {
+    title: "Resources",
+    items: [
+      {
+        title: "Wellness Library",
+        url: "/admin-dashboard/resources",
+        icon: FileText,
+      },
+    ],
+  },
 ];
 
 export const counselorMenu = [
@@ -125,6 +125,11 @@ export const counselorMenu = [
   {
     title: "Counseling",
     items: [
+      {
+        title: "Officer Assessments",
+        url: "/admin-dashboard/counselor/assessments",
+        icon: Signal,
+      },
       {
         title: "Appointments",
         url: "/admin-dashboard/counselor/appointments",

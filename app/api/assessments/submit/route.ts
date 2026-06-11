@@ -5,6 +5,7 @@ import { connectDB } from "@/lib/config/mongodb";
 import AssessmentTemplate from "@/lib/models/AssessmentTemplate";
 import { calculateStressLevel } from "@/lib/utils/Scoring";
 import AssessmentResponse from "@/lib/models/AssessmentRespons";
+import { generateAssessmentAnalysis } from "@/lib/gemini";
 
 export async function POST(request: NextRequest) {
   try {
@@ -59,6 +60,20 @@ export async function POST(request: NextRequest) {
       stressLevel,
       notes,
     });
+
+    const aiAnalysis = await generateAssessmentAnalysis({
+      templateName: template.name,
+      responses,
+      totalScore,
+      maxScore,
+      stressLevel,
+      notes,
+    });
+
+    if (aiAnalysis) {
+      assessment.aiAnalysis = { ...aiAnalysis, generatedAt: new Date() };
+      await assessment.save();
+    }
 
     return NextResponse.json(
       {

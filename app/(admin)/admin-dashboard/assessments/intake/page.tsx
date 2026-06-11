@@ -3,18 +3,18 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { OfficerAssessmentIntake } from "@/components/assessments/officer-assessment-intake";
+import { AIQuickAssessment } from "@/components/assessments/ai-quick-assessment";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, ArrowLeft } from "lucide-react";
 import { toast } from "sonner";
-
-type RiskLevel = "low" | "moderate" | "high" | null;
+import { STRESS_MANAGEMENT_TIPS } from "@/constants/stress-tips";
 
 export default function AssessmentIntakePage() {
   const [user, setUser] = useState<any>(null);
   const [templates, setTemplates] = useState<any[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
-  const [assessmentResult, setAssessmentResult] = useState<RiskLevel>(null);
+  const [submitted, setSubmitted] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   const router = useRouter();
@@ -48,8 +48,8 @@ export default function AssessmentIntakePage() {
   }, [router]);
 
   /* ---------------- Assessment Complete ---------------- */
-  const handleAssessmentComplete = (result: RiskLevel) => {
-    setAssessmentResult(result);
+  const handleAssessmentComplete = () => {
+    setSubmitted(true);
     toast.success("Assessment submitted successfully");
   };
 
@@ -63,57 +63,42 @@ export default function AssessmentIntakePage() {
   }
 
   /* ---------------- Result Screen ---------------- */
-  if (assessmentResult) {
+  if (submitted) {
     return (
-      <div className="flex items-center justify-center min-h-[70vh]">
+      <div className="flex items-center justify-center min-h-[70vh] py-8">
         <Card className="max-w-md w-full bg-gray-900 border-gray-800">
           <CardHeader className="text-center">
-            <CardTitle className="text-white">Assessment Result</CardTitle>
+            <CardTitle className="text-white">Assessment Submitted</CardTitle>
           </CardHeader>
 
           <CardContent className="space-y-6 text-center">
-            <p
-              className={`text-2xl font-bold ${
-                assessmentResult === "low"
-                  ? "text-green-400"
-                  : assessmentResult === "moderate"
-                    ? "text-yellow-400"
-                    : "text-red-400"
-              }`}
-            >
-              {assessmentResult.toUpperCase()} STRESS LEVEL
+            <p className="text-gray-400">
+              Thank you for completing the assessment. Your responses are
+              confidential and will be reviewed by a wellness counselor, who
+              may reach out to offer support.
             </p>
 
-            {assessmentResult === "low" && (
-              <p className="text-gray-400">
-                Your stress level is within a healthy range. Keep practicing
-                good wellness habits.
+            <div className="space-y-4 text-left">
+              <p className="text-sm font-semibold text-white text-center">
+                Manage Your Stress
               </p>
-            )}
-
-            {assessmentResult === "moderate" && (
-              <p className="text-gray-400">
-                You may be experiencing increased stress. Consider wellness
-                resources or peer support.
-              </p>
-            )}
-
-            {assessmentResult === "high" && (
-              <p className="text-gray-400">
-                We strongly recommend booking a confidential session with a
-                counselor.
-              </p>
-            )}
+              {STRESS_MANAGEMENT_TIPS.slice(0, 3).map((tip) => (
+                <div key={tip.title}>
+                  <p className="font-medium text-white text-sm">
+                    {tip.title}
+                  </p>
+                  <p className="text-xs text-gray-400">{tip.description}</p>
+                </div>
+              ))}
+            </div>
 
             <div className="flex flex-col gap-3">
-              {assessmentResult === "high" && (
-                <Button
-                  className="bg-red-600 hover:bg-red-700"
-                  onClick={() => router.push("/admin-dashboard/counseling")}
-                >
-                  Book Counselor
-                </Button>
-              )}
+              <Button
+                className="bg-red-600 hover:bg-red-700"
+                onClick={() => router.push("/admin-dashboard/counseling")}
+              >
+                Book Counselor
+              </Button>
 
               <Button
                 variant="outline"
@@ -125,7 +110,7 @@ export default function AssessmentIntakePage() {
               <Button
                 variant="ghost"
                 onClick={() => {
-                  setAssessmentResult(null);
+                  setSubmitted(false);
                   setSelectedTemplate(null);
                 }}
                 className="text-gray-400"
@@ -171,6 +156,8 @@ export default function AssessmentIntakePage() {
           Complete assessments to understand and manage your stress
         </p>
       </div>
+
+      <AIQuickAssessment />
 
       <div className="grid gap-4">
         {templates.length === 0 ? (
