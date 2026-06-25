@@ -41,9 +41,9 @@ export default function SignInPage() {
         <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-2xl">
           <CardHeader className="space-y-1">
             <CardTitle className="text-xl">Sign in</CardTitle>
-            <CardDescription>
+            {/* <CardDescription>
               Choose your preferred sign in method
-            </CardDescription>
+            </CardDescription> */}
           </CardHeader>
           <CardContent>
             <LoginForm />
