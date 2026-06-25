@@ -6,6 +6,8 @@ import { Button } from "@/components/ui/button"
 import {
   LineChart,
   Line,
+  BarChart,
+  Bar,
   PieChart,
   Pie,
   Cell,
@@ -23,7 +25,20 @@ interface ReportStats {
   totalAssessments: number
   averageStressLevel: number
   stressDistribution: Array<{ stressLevel: string; count: number }>
-  trends: Array<{ _id: { year: number; month: number }; count: number }>
+  trends: Array<{ month: string; count: number }>
+  departmentStats: Array<{
+    department: string
+    low: number
+    moderate: number
+    high: number
+    total: number
+  }>
+  counselingStats: {
+    totalAppointments: number
+    completedAppointments: number
+    pendingAppointments: number
+    sessionsRecorded: number
+  }
 }
 
 export default function ReportsPage() {
@@ -55,6 +70,13 @@ export default function ReportsPage() {
           count: s.count || 0,
         })),
         trends: chartData,
+        departmentStats: result.departmentStats || [],
+        counselingStats: result.counselingStats || {
+          totalAppointments: 0,
+          completedAppointments: 0,
+          pendingAppointments: 0,
+          sessionsRecorded: 0,
+        },
       })
     } catch (error) {
       console.error("[v0] Failed to fetch reports:", error)
@@ -68,6 +90,13 @@ export default function ReportsPage() {
           { stressLevel: "High", count: 0 },
         ],
         trends: [],
+        departmentStats: [],
+        counselingStats: {
+          totalAppointments: 0,
+          completedAppointments: 0,
+          pendingAppointments: 0,
+          sessionsRecorded: 0,
+        },
       })
     } finally {
       setLoading(false)
@@ -212,6 +241,98 @@ export default function ReportsPage() {
           </Card>
         </div>
       )}
+
+      {/* Department Stress Comparison */}
+      {stats && (
+        <Card>
+          <CardHeader>
+            <CardTitle>Department Stress Comparison</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={320}>
+              <BarChart
+                data={
+                  stats.departmentStats.length > 0
+                    ? stats.departmentStats
+                    : [{ department: "No data", low: 0, moderate: 0, high: 0, total: 0 }]
+                }
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="department" />
+                <YAxis />
+                <Tooltip />
+                <Legend />
+                <Bar dataKey="low" stackId="a" fill="#10b981" name="Low" />
+                <Bar dataKey="moderate" stackId="a" fill="#f59e0b" name="Moderate" />
+                <Bar dataKey="high" stackId="a" fill="#ef4444" name="High" />
+              </BarChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Most affected departments + Counseling stats */}
+      <div className="grid gap-6 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Most Affected Departments</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {stats?.departmentStats.filter((d) => d.high > 0).length ? (
+              stats.departmentStats
+                .filter((d) => d.high > 0)
+                .slice(0, 5)
+                .map((d) => (
+                  <div
+                    key={d.department}
+                    className="flex items-center justify-between border-b pb-2"
+                  >
+                    <span className="font-medium">{d.department}</span>
+                    <span className="text-red-500 font-bold">
+                      {d.high} high-stress
+                    </span>
+                  </div>
+                ))
+            ) : (
+              <p className="text-muted-foreground text-sm">
+                No high-stress cases recorded yet.
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Counseling Session Statistics</CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-4">
+            <div className="border rounded-lg p-4">
+              <p className="text-sm text-muted-foreground">Total Appointments</p>
+              <p className="text-2xl font-bold">
+                {stats?.counselingStats.totalAppointments || 0}
+              </p>
+            </div>
+            <div className="border rounded-lg p-4">
+              <p className="text-sm text-muted-foreground">Completed</p>
+              <p className="text-2xl font-bold">
+                {stats?.counselingStats.completedAppointments || 0}
+              </p>
+            </div>
+            <div className="border rounded-lg p-4">
+              <p className="text-sm text-muted-foreground">Pending</p>
+              <p className="text-2xl font-bold">
+                {stats?.counselingStats.pendingAppointments || 0}
+              </p>
+            </div>
+            <div className="border rounded-lg p-4">
+              <p className="text-sm text-muted-foreground">Sessions Recorded</p>
+              <p className="text-2xl font-bold">
+                {stats?.counselingStats.sessionsRecorded || 0}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Key Insights */}
       <Card>

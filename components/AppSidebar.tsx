@@ -21,6 +21,7 @@ import {
   FileText,
   Signal,
   User,
+  Building2,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -39,15 +40,25 @@ export const adminMenu = [
         url: "/admin-dashboard/users",
         icon: Users,
       },
+      // {
+      //   title: "Counselors",
+      //   url: "/admin-dashboard/counselors",
+      //   icon: User,
+      // },
       {
-        title: "Counselors",
-        url: "/admin-dashboard/counselors",
-        icon: User,
+        title: "Departments",
+        url: "/admin-dashboard/departments",
+        icon: Building2,
       },
       {
         title: "Appointments",
         url: "/admin-dashboard/appointments",
         icon: Calendar,
+      },
+      {
+        title: "Counselor Feedback",
+        url: "/admin-dashboard/feedback",
+        icon: MessageSquare,
       },
     ],
   },
@@ -69,6 +80,11 @@ export const adminMenu = [
         url: "/admin-dashboard/reports",
         icon: TrendingUp,
       },
+      {
+        title: "Monthly Reports",
+        url: "/admin-dashboard/monthly-reports",
+        icon: FileText,
+      },
     ],
   },
 ];
@@ -87,11 +103,11 @@ export const officerMenu = [
         url: "/admin-dashboard/assessments",
         icon: Signal,
       },
-      // {
-      //   title: "My Progress",
-      //   url: "/admin-dashboard/progress",
-      //   icon: TrendingUp,
-      // },
+      {
+        title: "My Assessment History",
+        url: "/admin-dashboard/assessments/history",
+        icon: TrendingUp,
+      },
     ],
   },
   {
@@ -100,6 +116,11 @@ export const officerMenu = [
       {
         title: "Book Counseling",
         url: "/admin-dashboard/counseling",
+        icon: Calendar,
+      },
+      {
+        title: "My Appointments",
+        url: "/admin-dashboard/my-appointments",
         icon: Calendar,
       },
     ],
@@ -129,6 +150,11 @@ export const counselorMenu = [
         title: "Officer Assessments",
         url: "/admin-dashboard/counselor/assessments",
         icon: Signal,
+      },
+      {
+        title: "Sessions & Reports",
+        url: "/admin-dashboard/counselor/sessions",
+        icon: FileText,
       },
       {
         title: "Appointments",

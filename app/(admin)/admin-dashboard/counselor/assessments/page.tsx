@@ -21,7 +21,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Loader2, Eye, Sparkles, Plus, X } from "lucide-react";
 import { toast } from "sonner";
-import { AdminAIAssessment } from "@/components/assessments/admin-ai-assessment";
+import { AIQuestionGenerator } from "@/components/assessments/ai-question-generator";
 
 interface Assessment {
   _id: string;
@@ -136,15 +136,16 @@ export default function CounselorAssessmentsPage() {
           ) : (
             <>
               <Plus className="h-4 w-4 mr-2" />
-              Generate AI Assessment
+              Generate Assessment Questions
             </>
           )}
         </Button>
       </div>
 
       {showAIGenerator && (
-        <AdminAIAssessment
+        <AIQuestionGenerator
           onComplete={() => {
+            setShowAIGenerator(false);
             init();
           }}
         />
@@ -266,7 +267,7 @@ export default function CounselorAssessmentsPage() {
                 <div className="border-t pt-4">
                   <div className="flex items-center gap-2 mb-2">
                     <Sparkles className="h-4 w-4 text-blue-500" />
-                    <p className="font-semibold">AI Analysis (Gemini)</p>
+                    <p className="font-semibold">AI Analysis</p>
                   </div>
                   <p className="text-sm text-muted-foreground mb-3">
                     {selected.aiAnalysis.summary}

@@ -64,6 +64,7 @@ interface OfficerStats {
 interface CounselorStats {
   assignedOfficers: number;
   totalSessions: number;
+  sessionsRecorded: number;
   upcomingSessions: number;
   highStressOfficersCount: number;
   totalAssessments: number;
@@ -80,6 +81,7 @@ interface DashboardData {
     stressDistribution?: Array<{ name: string; value: number }>;
     stressProgress?: Array<{ date: string; score: number }>;
     sessionDistribution?: Array<{ status: string; count: number }>;
+    sessionTrend?: Array<{ date: string; count: number }>;
   };
 }
 
@@ -504,7 +506,7 @@ export default function DashboardPage() {
             <Card className="bg-gray-900 border-gray-800">
               <CardHeader className="pb-3">
                 <CardTitle className="text-sm font-medium text-gray-400">
-                  Total Sessions
+                  Total Appointments
                 </CardTitle>
               </CardHeader>
               <CardContent>
@@ -513,6 +515,22 @@ export default function DashboardPage() {
                     {(data.stats as CounselorStats).totalSessions}
                   </div>
                   <Calendar className="h-8 w-8 text-indigo-500" />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm font-medium text-gray-400">
+                  Sessions Recorded
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between">
+                  <div className="text-2xl font-bold text-white">
+                    {(data.stats as CounselorStats).sessionsRecorded}
+                  </div>
+                  <FileText className="h-8 w-8 text-teal-500" />
                 </div>
               </CardContent>
             </Card>
@@ -582,41 +600,117 @@ export default function DashboardPage() {
             </Card>
           </div>
 
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader>
+                <CardTitle className="text-white">
+                  Appointment Load Distribution
+                </CardTitle>
+                <CardDescription>
+                  Number of appointments by status
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <BarChart
+                    data={
+                      data?.charts?.sessionDistribution &&
+                      data.charts.sessionDistribution.length > 0
+                        ? data.charts.sessionDistribution
+                        : DEFAULT_SESSION_DIST
+                    }
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <XAxis stroke="#9CA3AF" dataKey="status" />
+                    <YAxis stroke="#9CA3AF" />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#111827",
+                        border: "1px solid #374151",
+                      }}
+                    />
+                    <Bar dataKey="count" fill="#3B82F6" />
+                  </BarChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-gray-900 border-gray-800">
+              <CardHeader>
+                <CardTitle className="text-white">
+                  Recorded Sessions Trend
+                </CardTitle>
+                <CardDescription>Last 7 days</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart
+                    data={data?.charts?.sessionTrend ?? DEFAULT_EMPTY_TREND}
+                  >
+                    <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
+                    <XAxis stroke="#9CA3AF" dataKey="date" />
+                    <YAxis stroke="#9CA3AF" />
+                    <Tooltip
+                      contentStyle={{
+                        backgroundColor: "#111827",
+                        border: "1px solid #374151",
+                      }}
+                    />
+                    <Line
+                      type="monotone"
+                      dataKey="count"
+                      stroke="#14B8A6"
+                      strokeWidth={2}
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </CardContent>
+            </Card>
+          </div>
+
           <Card className="bg-gray-900 border-gray-800">
             <CardHeader>
               <CardTitle className="text-white">
-                Session Load Distribution
+                Officer Stress Distribution
               </CardTitle>
-              <CardDescription>Number of sessions by status</CardDescription>
+              <CardDescription>Across all assessments</CardDescription>
             </CardHeader>
             <CardContent>
               <ResponsiveContainer width="100%" height={300}>
-                <BarChart
-                  data={
-                    data?.charts?.sessionDistribution &&
-                    data.charts.sessionDistribution.length > 0
-                      ? data.charts.sessionDistribution
-                      : DEFAULT_SESSION_DIST
-                  }
-                >
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
-                  <XAxis stroke="#9CA3AF" dataKey="status" />
-                  <YAxis stroke="#9CA3AF" />
-                  <Tooltip
-                    contentStyle={{
-                      backgroundColor: "#111827",
-                      border: "1px solid #374151",
-                    }}
-                  />
-                  <Bar dataKey="count" fill="#3B82F6" />
-                </BarChart>
+                <PieChart>
+                  <Pie
+                    data={
+                      (data?.charts?.stressDistribution ?? []).some(
+                        (s) => s.value > 0
+                      )
+                        ? data?.charts?.stressDistribution
+                        : EMPTY_PIE_DATA
+                    }
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={({ name, value }) => `${name} (${value})`}
+                    outerRadius={80}
+                    dataKey="value"
+                  >
+                    {(data?.charts?.stressDistribution ?? EMPTY_PIE_DATA).map(
+                      (_, index) => (
+                        <Cell
+                          key={`cell-${index}`}
+                          fill={
+                            (data?.charts?.stressDistribution ?? []).some(
+                              (s) => s.value > 0
+                            )
+                              ? Object.values(STRESS_COLORS)[index] ?? "#374151"
+                              : "#374151"
+                          }
+                        />
+                      )
+                    )}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
               </ResponsiveContainer>
-              {(!data?.charts?.sessionDistribution ||
-                data.charts.sessionDistribution.length === 0) && (
-                <p className="text-center text-gray-500 text-sm mt-2">
-                  No session data yet
-                </p>
-              )}
             </CardContent>
           </Card>
         </>

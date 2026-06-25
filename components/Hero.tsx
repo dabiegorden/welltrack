@@ -19,25 +19,29 @@ const Hero = () => {
           <div className="z-10 space-y-8 animate-in fade-in slide-in-from-left duration-700">
             {/* Badge */}
             <div className="inline-flex items-center gap-2 bg-white/20 backdrop-blur-sm px-4 py-2 rounded-full">
-              <CheckCircle2 className="w-4 h-4 text-white" />
+              <Shield className="w-4 h-4 text-white" />
               <span className="text-white text-sm font-medium">
-                Trusted by 1,000+ Officers
+                Sefwi-Wiawso Police Division
               </span>
             </div>
 
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-white leading-tight">
-              Your Mental Health Matters
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight">
+              Welcome to Sefwi-Wiawso Divisional Well Track System
             </h1>
 
             <p className="text-xl text-white/90 leading-relaxed max-w-xl">
-              A confidential platform designed exclusively for law enforcement
-              professionals to access mental health support, resources, and
-              community.
+              A confidential police mental wellness platform for stress
+              assessment, counseling support, and officer wellbeing tracking —
+              built for the officers of the Sefwi-Wiawso Police Division.
             </p>
 
             {/* Feature Pills */}
             <div className="flex flex-wrap gap-3">
-              {["24/7 Support", "100% Confidential", "Expert Counselors"].map(
+              {[
+                "Stress Assessment",
+                "Counseling Support",
+                "Wellbeing Tracking",
+              ].map(
                 (item) => (
                   <div
                     key={item}

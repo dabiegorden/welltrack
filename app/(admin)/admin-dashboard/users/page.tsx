@@ -43,6 +43,8 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Suspense } from "react";
 import { UserFormDialog } from "@/components/admin/UserFormDialog";
+import { ImportOfficersDialog } from "@/components/admin/ImportOfficersDialog";
+import { FileSpreadsheet } from "lucide-react";
 
 function UsersContent() {
   const [users, setUsers] = useState<any[]>([]);
@@ -51,6 +53,7 @@ function UsersContent() {
   const [roleFilter, setRoleFilter] = useState("all");
 
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
   const [deletingUser, setDeletingUser] = useState<any>(null);
 
@@ -119,12 +122,21 @@ function UsersContent() {
             Manage officers and counselors in the WellTrack system.
           </p>
         </div>
-        <Button
-          onClick={openAddDialog}
-          className="bg-blue-600 hover:bg-blue-700 h-11 px-6 shadow-lg shadow-blue-500/20"
-        >
-          <Plus className="mr-2 h-4 w-4" /> Add New User
-        </Button>
+        <div className="flex gap-3">
+          <Button
+            onClick={() => setImportOpen(true)}
+            variant="outline"
+            className="h-11 px-6 border-gray-700"
+          >
+            <FileSpreadsheet className="mr-2 h-4 w-4" /> Import Officers
+          </Button>
+          <Button
+            onClick={openAddDialog}
+            className="bg-blue-600 hover:bg-blue-700 h-11 px-6 shadow-lg shadow-blue-500/20"
+          >
+            <Plus className="mr-2 h-4 w-4" /> Add New User
+          </Button>
+        </div>
       </div>
 
       <Card className="bg-gray-900 border-gray-800 overflow-hidden shadow-xl">
@@ -307,6 +319,12 @@ function UsersContent() {
         onOpenChange={setIsDialogOpen}
         onSuccess={fetchUsers}
         user={editingUser}
+      />
+
+      <ImportOfficersDialog
+        open={importOpen}
+        onOpenChange={setImportOpen}
+        onSuccess={fetchUsers}
       />
 
       <AlertDialog

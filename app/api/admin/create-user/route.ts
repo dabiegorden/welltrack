@@ -23,8 +23,20 @@ export async function POST(request: Request) {
     }
 
     await connectDB();
-    const { email, password, firstname, lastname, role, phone, address } =
-      await request.json();
+    const {
+      email,
+      password,
+      firstname,
+      lastname,
+      role,
+      phone,
+      address,
+      serviceNumber,
+      rank,
+      unit,
+      department,
+      contact,
+    } = await request.json();
 
     // Check if user already exists
     const existingUser = await User.findOne({ email });
@@ -33,6 +45,16 @@ export async function POST(request: Request) {
         { error: "User already exists" },
         { status: 400 }
       );
+    }
+
+    if (serviceNumber) {
+      const existingService = await User.findOne({ serviceNumber });
+      if (existingService) {
+        return NextResponse.json(
+          { error: "Service Number already exists" },
+          { status: 400 }
+        );
+      }
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
@@ -45,6 +67,11 @@ export async function POST(request: Request) {
       role, // officer or counselor
       phone,
       address,
+      serviceNumber,
+      rank,
+      unit,
+      department,
+      contact,
     });
 
     return NextResponse.json(

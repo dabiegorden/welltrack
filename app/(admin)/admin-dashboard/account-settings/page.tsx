@@ -15,7 +15,26 @@ import {
   FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
+
+const DEPARTMENTS = [
+  "CID",
+  "DOVVSU",
+  "Communication",
+  "Arms",
+  "Store",
+  "JUPOL",
+  "Operations",
+  "Orderly Room",
+  "Finance",
+];
 import { Spinner } from "@/components/ui/spinner";
 import {
   Card,
@@ -32,6 +51,11 @@ const profileSchema = z.object({
   lastname: z.string().min(2, "Last name must be at least 2 characters"),
   phone: z.string().optional(),
   address: z.string().optional(),
+  serviceNumber: z.string().optional(),
+  rank: z.string().optional(),
+  unit: z.string().optional(),
+  department: z.string().optional(),
+  contact: z.string().optional(),
   password: z
     .string()
     .min(6, "Password must be at least 6 characters")
@@ -52,9 +76,15 @@ export default function ProfileSettingsPage() {
       lastname: "",
       phone: "",
       address: "",
+      serviceNumber: "",
+      rank: "",
+      unit: "",
+      department: "",
+      contact: "",
       password: "",
     },
   });
+  const [profile, setProfile] = useState<any>(null);
 
   useEffect(() => {
     async function loadProfile() {
@@ -62,11 +92,17 @@ export default function ProfileSettingsPage() {
         const res = await fetch("/api/auth/profile");
         const data = await res.json();
         if (data.user) {
+          setProfile(data.user);
           form.reset({
             firstname: data.user.firstname,
             lastname: data.user.lastname,
             phone: data.user.phone || "",
             address: data.user.address || "",
+            serviceNumber: data.user.serviceNumber || "",
+            rank: data.user.rank || "",
+            unit: data.user.unit || "",
+            department: data.user.department || "",
+            contact: data.user.contact || "",
             password: "",
           });
         }
@@ -244,6 +280,124 @@ export default function ProfileSettingsPage() {
                       </FormItem>
                     )}
                   />
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="serviceNumber"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Service Number</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder="e.g. SWP-1024"
+                              className="bg-gray-950 border-gray-800 focus:ring-blue-500/50"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="rank"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Rank</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder="e.g. Inspector"
+                              className="bg-gray-950 border-gray-800 focus:ring-blue-500/50"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="unit"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Unit</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              className="bg-gray-950 border-gray-800 focus:ring-blue-500/50"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="department"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Department</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            value={field.value || ""}
+                          >
+                            <FormControl>
+                              <SelectTrigger className="bg-gray-950 border-gray-800">
+                                <SelectValue placeholder="Select department" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent className="bg-gray-950 border-gray-800 text-white">
+                              {DEPARTMENTS.map((d) => (
+                                <SelectItem key={d} value={d}>
+                                  {d}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="contact"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Contact</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              className="bg-gray-950 border-gray-800 focus:ring-blue-500/50"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-gray-800 mt-2">
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase tracking-wide">
+                        Email
+                      </p>
+                      <p className="text-sm text-gray-300 mt-1">
+                        {profile?.email || "—"}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-xs text-gray-500 uppercase tracking-wide">
+                        Role
+                      </p>
+                      <p className="text-sm text-gray-300 mt-1 capitalize">
+                        {profile?.role || "—"}
+                      </p>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
 

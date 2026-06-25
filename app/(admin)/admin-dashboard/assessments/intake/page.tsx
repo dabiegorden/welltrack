@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { OfficerAssessmentIntake } from "@/components/assessments/officer-assessment-intake";
-import { AIQuickAssessment } from "@/components/assessments/ai-quick-assessment";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Loader2, ArrowLeft } from "lucide-react";
@@ -15,6 +14,7 @@ export default function AssessmentIntakePage() {
   const [templates, setTemplates] = useState<any[]>([]);
   const [selectedTemplate, setSelectedTemplate] = useState<any>(null);
   const [submitted, setSubmitted] = useState(false);
+  const [result, setResult] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   const router = useRouter();
@@ -48,7 +48,8 @@ export default function AssessmentIntakePage() {
   }, [router]);
 
   /* ---------------- Assessment Complete ---------------- */
-  const handleAssessmentComplete = () => {
+  const handleAssessmentComplete = (data?: any) => {
+    setResult(data || null);
     setSubmitted(true);
     toast.success("Assessment submitted successfully");
   };
@@ -64,53 +65,92 @@ export default function AssessmentIntakePage() {
 
   /* ---------------- Result Screen ---------------- */
   if (submitted) {
+    const level: "low" | "moderate" | "high" = result?.stressLevel || "low";
+    const needsCounseling = level === "moderate" || level === "high";
+    const levelStyles: Record<string, string> = {
+      low: "text-emerald-400 border-emerald-500/30 bg-emerald-500/10",
+      moderate: "text-amber-400 border-amber-500/30 bg-amber-500/10",
+      high: "text-red-400 border-red-500/30 bg-red-500/10",
+    };
+    const levelLabel: Record<string, string> = {
+      low: "Low Stress",
+      moderate: "Moderate Stress",
+      high: "High Stress",
+    };
+
     return (
       <div className="flex items-center justify-center min-h-[70vh] py-8">
         <Card className="max-w-md w-full bg-gray-900 border-gray-800">
           <CardHeader className="text-center">
-            <CardTitle className="text-white">Assessment Submitted</CardTitle>
+            <CardTitle className="text-white">Your Assessment Result</CardTitle>
           </CardHeader>
 
           <CardContent className="space-y-6 text-center">
-            <p className="text-gray-400">
-              Thank you for completing the assessment. Your responses are
-              confidential and will be reviewed by a wellness counselor, who
-              may reach out to offer support.
-            </p>
+            <div
+              className={`rounded-xl border p-6 ${levelStyles[level]}`}
+            >
+              <p className="text-sm uppercase tracking-wide opacity-80">
+                Stress Level
+              </p>
+              <p className="text-3xl font-bold mt-1">{levelLabel[level]}</p>
+              {typeof result?.totalScore === "number" && (
+                <p className="text-sm mt-2 opacity-80">
+                  Score: {result.totalScore}
+                </p>
+              )}
+            </div>
 
-            <div className="space-y-4 text-left">
+            {needsCounseling ? (
+              <div className="rounded-lg border border-red-500/30 bg-red-500/5 p-4 text-left">
+                <p className="text-sm text-red-200">
+                  Your assessment result indicates that you may benefit from a
+                  counseling session. Please book an appointment with a
+                  counselor.
+                </p>
+              </div>
+            ) : (
+              <p className="text-gray-400 text-sm">
+                Your stress levels appear to be within a healthy range. Keep up
+                your wellness practices.
+              </p>
+            )}
+
+            <div className="space-y-3 text-left">
               <p className="text-sm font-semibold text-white text-center">
                 Manage Your Stress
               </p>
               {STRESS_MANAGEMENT_TIPS.slice(0, 3).map((tip) => (
                 <div key={tip.title}>
-                  <p className="font-medium text-white text-sm">
-                    {tip.title}
-                  </p>
+                  <p className="font-medium text-white text-sm">{tip.title}</p>
                   <p className="text-xs text-gray-400">{tip.description}</p>
                 </div>
               ))}
             </div>
 
             <div className="flex flex-col gap-3">
-              <Button
-                className="bg-red-600 hover:bg-red-700"
-                onClick={() => router.push("/admin-dashboard/counseling")}
-              >
-                Book Counselor
-              </Button>
+              {needsCounseling && (
+                <Button
+                  className="bg-red-600 hover:bg-red-700"
+                  onClick={() => router.push("/admin-dashboard/counseling")}
+                >
+                  Book a Counselor
+                </Button>
+              )}
 
               <Button
                 variant="outline"
-                onClick={() => router.push("/admin-dashboard")}
+                onClick={() =>
+                  router.push("/admin-dashboard/assessments/history")
+                }
               >
-                Go to Dashboard
+                View My Assessment History
               </Button>
 
               <Button
                 variant="ghost"
                 onClick={() => {
                   setSubmitted(false);
+                  setResult(null);
                   setSelectedTemplate(null);
                 }}
                 className="text-gray-400"
@@ -156,8 +196,6 @@ export default function AssessmentIntakePage() {
           Complete assessments to understand and manage your stress
         </p>
       </div>
-
-      <AIQuickAssessment />
 
       <div className="grid gap-4">
         {templates.length === 0 ? (

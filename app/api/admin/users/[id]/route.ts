@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { connectDB } from "@/lib/config/mongodb";
 import User from "@/lib/models/User";
 import { verifyToken } from "@/lib/auth";
+import bcrypt from "bcryptjs";
 
 async function isAdmin() {
   const cookieStore = await cookies();
@@ -30,6 +31,27 @@ export async function PUT(
     const user = await User.findById(id);
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    // Enforce unique service number across other users
+    if (updates.serviceNumber) {
+      const existingService = await User.findOne({
+        serviceNumber: updates.serviceNumber,
+        _id: { $ne: id },
+      });
+      if (existingService) {
+        return NextResponse.json(
+          { error: "Service Number already exists" },
+          { status: 400 }
+        );
+      }
+    }
+
+    // Hash a new password if provided; ignore empty/undefined values
+    if (updates.password) {
+      updates.password = await bcrypt.hash(updates.password, 12);
+    } else {
+      delete updates.password;
     }
 
     Object.keys(updates).forEach((key) => {

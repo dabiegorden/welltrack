@@ -3,6 +3,7 @@ import { verifyToken } from "@/lib/auth";
 import { cookies } from "next/headers";
 import { connectDB } from "@/lib/config/mongodb";
 import AssessmentResponse from "@/lib/models/AssessmentRespons";
+import User from "@/lib/models/User";
 import { generateAssessmentFromText } from "@/lib/gemini";
 
 export async function POST(request: NextRequest) {
@@ -28,22 +29,72 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    let targetOfficerId = payload.id;
-
-    if (payload.role === "admin" || payload.role === "counselor") {
-      if (!officerId) {
-        return NextResponse.json(
-          { error: "Please select an officer" },
-          { status: 400 }
-        );
-      }
-      targetOfficerId = officerId;
-    } else if (payload.role !== "officer") {
+    const isPrivileged =
+      payload.role === "admin" || payload.role === "counselor";
+    if (!isPrivileged && payload.role !== "officer") {
       return NextResponse.json(
         { error: "Not authorized to submit assessments" },
         { status: 403 }
       );
     }
+    if (isPrivileged && !officerId) {
+      return NextResponse.json(
+        { error: "Please select an officer" },
+        { status: 400 }
+      );
+    }
+
+    await connectDB();
+
+    // Bulk: admin generating for ALL officers from a single prompt
+    if (isPrivileged && officerId === "all") {
+      const officers = await User.find({ role: "officer" }).select("_id");
+      if (officers.length === 0) {
+        return NextResponse.json(
+          { error: "No officers found" },
+          { status: 400 }
+        );
+      }
+
+      let created = 0;
+      let failed = 0;
+      for (const officer of officers) {
+        const result = await generateAssessmentFromText(description);
+        if (!result) {
+          failed++;
+          continue;
+        }
+        await AssessmentResponse.create({
+          officerId: officer._id,
+          source: "ai-chat",
+          inputText: description,
+          totalScore: result.totalScore,
+          maxScore: result.maxScore,
+          stressLevel: result.riskLevel,
+          aiAnalysis: {
+            summary: result.summary,
+            riskLevel: result.riskLevel,
+            recommendations: result.recommendations,
+            generatedAt: new Date(),
+          },
+        });
+        created++;
+      }
+
+      return NextResponse.json(
+        {
+          message: `Assessment generated for ${created} officer(s)${
+            failed ? `, ${failed} failed` : ""
+          }`,
+          bulk: true,
+          created,
+          failed,
+        },
+        { status: 201 }
+      );
+    }
+
+    const targetOfficerId = isPrivileged ? officerId : payload.id;
 
     const result = await generateAssessmentFromText(description);
 
@@ -53,8 +104,6 @@ export async function POST(request: NextRequest) {
         { status: 503 }
       );
     }
-
-    await connectDB();
 
     const assessment = await AssessmentResponse.create({
       officerId: targetOfficerId,

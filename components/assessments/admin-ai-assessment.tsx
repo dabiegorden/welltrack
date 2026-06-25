@@ -38,6 +38,7 @@ interface AIResult {
 
 interface AdminAIAssessmentProps {
   onComplete?: () => void;
+  allowAll?: boolean;
 }
 
 const stressLevelColor: Record<string, string> = {
@@ -46,13 +47,17 @@ const stressLevelColor: Record<string, string> = {
   high: "bg-red-100 text-red-800",
 };
 
-export function AdminAIAssessment({ onComplete }: AdminAIAssessmentProps) {
+export function AdminAIAssessment({
+  onComplete,
+  allowAll = false,
+}: AdminAIAssessmentProps) {
   const [officers, setOfficers] = useState<Officer[]>([]);
   const [officerId, setOfficerId] = useState("");
   const [description, setDescription] = useState("");
   const [isLoadingOfficers, setIsLoadingOfficers] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [result, setResult] = useState<AIResult | null>(null);
+  const [bulkMessage, setBulkMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const loadOfficers = async () => {
@@ -98,6 +103,13 @@ export function AdminAIAssessment({ onComplete }: AdminAIAssessmentProps) {
         return;
       }
 
+      if (data.bulk) {
+        setBulkMessage(data.message);
+        toast.success(data.message);
+        onComplete?.();
+        return;
+      }
+
       setResult({
         stressLevel: data.stressLevel,
         totalScore: data.totalScore,
@@ -117,9 +129,28 @@ export function AdminAIAssessment({ onComplete }: AdminAIAssessmentProps) {
 
   const reset = () => {
     setResult(null);
+    setBulkMessage(null);
     setDescription("");
     setOfficerId("");
   };
+
+  if (bulkMessage) {
+    return (
+      <Card className="border-green-500/20 bg-green-50/5">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <CheckCircle className="h-6 w-6 text-green-500" />
+            <CardTitle className="text-green-300">{bulkMessage}</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <Button variant="outline" className="bg-transparent" onClick={reset}>
+            Generate Another
+          </Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   if (result) {
     return (
@@ -190,7 +221,7 @@ export function AdminAIAssessment({ onComplete }: AdminAIAssessmentProps) {
         </div>
         <CardDescription>
           Select an officer and describe their reported situation or
-          observed behavior. Google Gemini will analyze the description and
+          observed behavior. The AI will analyze the description and
           generate a stress assessment on their behalf.
         </CardDescription>
       </CardHeader>
@@ -204,6 +235,9 @@ export function AdminAIAssessment({ onComplete }: AdminAIAssessmentProps) {
             />
           </SelectTrigger>
           <SelectContent>
+            {allowAll && (
+              <SelectItem value="all">All Officers</SelectItem>
+            )}
             {officers.map((officer) => (
               <SelectItem key={officer._id} value={officer._id}>
                 {officer.firstname} {officer.lastname} ({officer.email})

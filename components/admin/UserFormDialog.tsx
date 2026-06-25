@@ -32,6 +32,18 @@ import {
 import { toast } from "sonner";
 import { Spinner } from "@/components/ui/spinner";
 
+const DEPARTMENTS = [
+  "CID",
+  "DOVVSU",
+  "Communication",
+  "Arms",
+  "Store",
+  "JUPOL",
+  "Operations",
+  "Orderly Room",
+  "Finance",
+];
+
 const userSchema = z.object({
   firstname: z.string().min(2, "First name must be at least 2 characters"),
   lastname: z.string().min(2, "Last name must be at least 2 characters"),
@@ -44,6 +56,11 @@ const userSchema = z.object({
   role: z.enum(["officer", "counselor"]),
   phone: z.string().optional(),
   address: z.string().optional(),
+  serviceNumber: z.string().optional(),
+  rank: z.string().optional(),
+  unit: z.string().optional(),
+  department: z.string().optional(),
+  contact: z.string().optional(),
 });
 
 type UserFormValues = z.infer<typeof userSchema>;
@@ -73,6 +90,11 @@ export function UserFormDialog({
       role: "officer",
       phone: "",
       address: "",
+      serviceNumber: "",
+      rank: "",
+      unit: "",
+      department: "",
+      contact: "",
     },
   });
 
@@ -86,6 +108,11 @@ export function UserFormDialog({
         role: user.role,
         phone: user.phone || "",
         address: user.address || "",
+        serviceNumber: user.serviceNumber || "",
+        rank: user.rank || "",
+        unit: user.unit || "",
+        department: user.department || "",
+        contact: user.contact || "",
       });
     } else if (open) {
       form.reset({
@@ -96,6 +123,11 @@ export function UserFormDialog({
         role: "officer",
         phone: "",
         address: "",
+        serviceNumber: "",
+        rank: "",
+        unit: "",
+        department: "",
+        contact: "",
       });
     }
   }, [user, open, form]);
@@ -136,7 +168,7 @@ export function UserFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-突破-md bg-gray-950 border-gray-800 text-white">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto bg-gray-950 border-gray-800 text-white">
         <DialogHeader>
           <DialogTitle>{user ? "Edit User" : "Add New User"}</DialogTitle>
           <DialogDescription className="text-gray-400">
@@ -270,6 +302,87 @@ export function UserFormDialog({
                         className="bg-gray-900 border-gray-800"
                       />
                     </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="serviceNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Service Number</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        placeholder="e.g. SWP-1024"
+                        className="bg-gray-900 border-gray-800"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="rank"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Rank</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        placeholder="e.g. Inspector"
+                        className="bg-gray-900 border-gray-800"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <FormField
+                control={form.control}
+                name="unit"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Unit</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        className="bg-gray-900 border-gray-800"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="department"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Department</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value || ""}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="bg-gray-900 border-gray-800">
+                          <SelectValue placeholder="Select department" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent className="bg-gray-950 border-gray-800 text-white">
+                        {DEPARTMENTS.map((dept) => (
+                          <SelectItem key={dept} value={dept}>
+                            {dept}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}

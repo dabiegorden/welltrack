@@ -41,7 +41,7 @@ export async function GET(request: Request) {
     if (role) query.role = role;
 
     const users = await User.find(query).select(
-      "firstname lastname email role phone address createdAt"
+      "firstname lastname email role phone address serviceNumber rank unit department contact createdAt"
     );
 
     return NextResponse.json({ users });
@@ -57,8 +57,20 @@ export async function POST(request: Request) {
 
   try {
     await connectDB();
-    const { email, password, firstname, lastname, role, phone, address } =
-      await request.json();
+    const {
+      email,
+      password,
+      firstname,
+      lastname,
+      role,
+      phone,
+      address,
+      serviceNumber,
+      rank,
+      unit,
+      department,
+      contact,
+    } = await request.json();
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
@@ -66,6 +78,16 @@ export async function POST(request: Request) {
         { error: "User already exists" },
         { status: 400 }
       );
+    }
+
+    if (serviceNumber) {
+      const existingService = await User.findOne({ serviceNumber });
+      if (existingService) {
+        return NextResponse.json(
+          { error: "Service Number already exists" },
+          { status: 400 }
+        );
+      }
     }
 
     const hashedPassword = await bcrypt.hash(password, 12);
@@ -77,6 +99,11 @@ export async function POST(request: Request) {
       role,
       phone,
       address,
+      serviceNumber,
+      rank,
+      unit,
+      department,
+      contact,
     });
 
     // The admin's token should remain unchanged

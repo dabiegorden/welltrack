@@ -9,6 +9,11 @@ export interface IUser extends Document {
   role: "admin" | "officer" | "counselor";
   phone: string;
   address: string;
+  serviceNumber?: string;
+  rank?: string;
+  unit?: string;
+  department?: string;
+  contact?: string;
   createdAt: Date;
   updatedAt: Date;
   comparePassword(candidatePassword: string): Promise<boolean>;
@@ -43,6 +48,17 @@ const UserSchema = new Schema<IUser>(
     },
     phone: { type: String },
     address: { type: String },
+    // Police service details (used for admins and officers)
+    serviceNumber: {
+      type: String,
+      unique: true,
+      sparse: true, // allows multiple docs without a service number
+      trim: true,
+    },
+    rank: { type: String, trim: true },
+    unit: { type: String, trim: true },
+    department: { type: String, trim: true },
+    contact: { type: String, trim: true },
   },
   { timestamps: true }
 );

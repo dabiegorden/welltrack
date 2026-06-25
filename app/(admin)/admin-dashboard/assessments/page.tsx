@@ -37,6 +37,7 @@ import {
 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
+import { AIQuestionGenerator } from "@/components/assessments/ai-question-generator";
 
 interface Assessment {
   _id: string;
@@ -73,6 +74,7 @@ export default function AssessmentsPage() {
     useState<Assessment | null>(null);
   const [editingTemplate, setEditingTemplate] = useState<Template | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showAIGenerator, setShowAIGenerator] = useState(false);
   const [templateForm, setTemplateForm] = useState({
     name: "",
     description: "",
@@ -287,6 +289,13 @@ export default function AssessmentsPage() {
           </p>
         </div>
         <div className="flex gap-2 items-start">
+          <Button
+            variant="outline"
+            onClick={() => setShowAIGenerator((p) => !p)}
+            className="gap-2"
+          >
+            {showAIGenerator ? "Close AI" : "Generate Assessment Questions"}
+          </Button>
           <Dialog open={showTemplateForm} onOpenChange={setShowTemplateForm}>
             <DialogTrigger asChild>
               <Button className="gap-2">
@@ -396,6 +405,15 @@ export default function AssessmentsPage() {
           </Dialog>
         </div>
       </div>
+
+      {showAIGenerator && (
+        <AIQuestionGenerator
+          onComplete={() => {
+            setShowAIGenerator(false);
+            fetchTemplates();
+          }}
+        />
+      )}
 
       <div className="grid gap-4 md:grid-cols-2">
         <Card>

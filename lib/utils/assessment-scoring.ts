@@ -33,6 +33,20 @@ export function calculateStressScore(responses: number[]): ScoringResult {
   };
 }
 
+// Compute the maximum achievable score for a template's questions.
+// Uses each question's highest answer-option points, falling back to 4 (Likert).
+export function computeMaxScore(
+  questions: { options?: { points: number }[] }[]
+): number {
+  return questions.reduce((sum, q) => {
+    const max =
+      q.options && q.options.length
+        ? Math.max(...q.options.map((o) => o.points || 0))
+        : 4;
+    return sum + max;
+  }, 0);
+}
+
 export function getStressLevelDescription(
   level: "low" | "moderate" | "high"
 ): string {

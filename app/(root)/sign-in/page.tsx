@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import {
   Card,
   CardContent,
@@ -25,6 +26,18 @@ export default function SignInPage() {
       </div>
 
       <div className="w-full max-w-md z-10 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+        <div className="flex flex-col items-center mb-6">
+          <Image
+            src="/assets/logo.jpg"
+            alt="Sefwi-Wiawso Police Division logo"
+            width={72}
+            height={72}
+            className="w-18 h-18 rounded-2xl object-cover shadow-lg"
+          />
+          <p className="mt-3 text-center text-sm font-medium text-muted-foreground">
+            Sefwi-Wiawso Divisional Well Track System
+          </p>
+        </div>
         <Card className="border-border/50 bg-card/50 backdrop-blur-xl shadow-2xl">
           <CardHeader className="space-y-1">
             <CardTitle className="text-xl">Sign in</CardTitle>

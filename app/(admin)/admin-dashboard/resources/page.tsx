@@ -300,9 +300,18 @@ export default function ResourcesPage() {
         {loading ? (
           <p className="text-muted-foreground col-span-full">Loading...</p>
         ) : resources.length === 0 ? (
-          <p className="text-muted-foreground col-span-full">
-            No resources found
-          </p>
+          <Card className="col-span-full border-dashed">
+            <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+              <FileText className="h-12 w-12 text-muted-foreground/40 mb-4" />
+              <p className="text-lg font-medium text-muted-foreground">
+                No resources available at the moment
+              </p>
+              <p className="text-sm text-muted-foreground/70 mt-1 max-w-md">
+                Wellness documents, mental health materials, and police support
+                resources will appear here once added.
+              </p>
+            </CardContent>
+          </Card>
         ) : (
           resources.map((resource) => (
             <Card key={resource._id} className="flex flex-col">

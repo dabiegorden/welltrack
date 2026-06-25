@@ -7,6 +7,8 @@ import AssessmentResponse from "@/lib/models/AssessmentRespons";
 import Appointment from "@/lib/models/Appointment";
 import Resources from "@/lib/models/Resources";
 import AssessmentTemplate from "@/lib/models/AssessmentTemplate";
+import CounselingSession from "@/lib/models/CounselingSession";
+import mongoose from "mongoose";
 
 export async function GET(request: NextRequest) {
   try {
@@ -160,27 +162,57 @@ export async function GET(request: NextRequest) {
     }
 
     if (payload.role === "counselor") {
-      const assignedOfficers = await User.countDocuments({
-        assignedCounselor: payload.id,
+      const counselorObjId = new mongoose.Types.ObjectId(payload.id);
+
+      // Officers this counselor has worked with (appointments OR recorded sessions)
+      const [apptOfficers, sessionOfficers] = await Promise.all([
+        Appointment.distinct("officerId", { counselorId: counselorObjId }),
+        CounselingSession.distinct("officerId", {
+          counselorId: counselorObjId,
+        }),
+      ]);
+      const distinctOfficers = new Set(
+        [...apptOfficers, ...sessionOfficers]
+          .filter(Boolean)
+          .map((o: any) => o.toString())
+      );
+
+      const totalAppointments = await Appointment.countDocuments({
+        counselorId: counselorObjId,
       });
-      const totalSessions = await Appointment.countDocuments({
-        counselorId: payload.id,
+      const sessionsRecorded = await CounselingSession.countDocuments({
+        counselorId: counselorObjId,
       });
       const upcomingSessions = await Appointment.countDocuments({
-        counselorId: payload.id,
+        counselorId: counselorObjId,
         date: { $gte: new Date() },
       });
 
       const sessionDistribution = await Appointment.aggregate([
+        { $match: { counselorId: counselorObjId } },
+        { $group: { _id: "$status", count: { $sum: 1 } } },
+      ]);
+
+      // Recorded sessions trend (last 7 days)
+      const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      const sessionTrend = await CounselingSession.aggregate([
         {
-          $match: { counselorId: payload.id },
+          $match: {
+            counselorId: counselorObjId,
+            sessionDate: { $gte: sevenDaysAgo },
+          },
         },
         {
           $group: {
-            _id: "$status",
+            _id: { $dateToString: { format: "%Y-%m-%d", date: "$sessionDate" } },
             count: { $sum: 1 },
           },
         },
+        { $sort: { _id: 1 } },
+      ]);
+
+      const stressDistribution = await AssessmentResponse.aggregate([
+        { $group: { _id: "$stressLevel", count: { $sum: 1 } } },
       ]);
 
       const highStressOfficers = await AssessmentResponse.aggregate([
@@ -204,8 +236,9 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({
         role: "counselor",
         stats: {
-          assignedOfficers,
-          totalSessions,
+          assignedOfficers: distinctOfficers.size,
+          totalSessions: totalAppointments,
+          sessionsRecorded,
           upcomingSessions,
           highStressOfficersCount: highStressOfficers[0]?.total || 0,
           totalAssessments,
@@ -230,6 +263,35 @@ export async function GET(request: NextRequest) {
               count:
                 sessionDistribution.find((s: any) => s._id === "cancelled")
                   ?.count || 0,
+            },
+          ],
+          sessionTrend: Array.from({ length: 7 }, (_, i) => {
+            const date = new Date(Date.now() - (6 - i) * 24 * 60 * 60 * 1000);
+            const dateStr = date.toISOString().split("T")[0];
+            const found = sessionTrend.find((item: any) => item._id === dateStr);
+            return { date: dateStr, count: found?.count || 0 };
+          }),
+          stressDistribution: [
+            {
+              name: "Low",
+              value:
+                stressDistribution.find(
+                  (s: any) => s._id?.toLowerCase() === "low"
+                )?.count || 0,
+            },
+            {
+              name: "Moderate",
+              value:
+                stressDistribution.find(
+                  (s: any) => s._id?.toLowerCase() === "moderate"
+                )?.count || 0,
+            },
+            {
+              name: "High",
+              value:
+                stressDistribution.find(
+                  (s: any) => s._id?.toLowerCase() === "high"
+                )?.count || 0,
             },
           ],
         },

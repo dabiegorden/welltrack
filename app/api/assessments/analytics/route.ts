@@ -4,6 +4,8 @@ import { cookies } from "next/headers";
 import { connectDB } from "@/lib/config/mongodb";
 import User from "@/lib/models/User";
 import AssessmentResponse from "@/lib/models/AssessmentRespons";
+import Appointment from "@/lib/models/Appointment";
+import CounselingSession from "@/lib/models/CounselingSession";
 
 export async function GET(request: NextRequest) {
   try {
@@ -72,6 +74,72 @@ export async function GET(request: NextRequest) {
       },
     ]);
 
+    // Admin-only: department comparison + counseling statistics
+    let departmentComparison: any[] = [];
+    let counselingStats = {
+      totalAppointments: 0,
+      completedAppointments: 0,
+      pendingAppointments: 0,
+      sessionsRecorded: 0,
+    };
+
+    if (payload.role === "admin") {
+      departmentComparison = await AssessmentResponse.aggregate([
+        {
+          $lookup: {
+            from: "users",
+            localField: "officerId",
+            foreignField: "_id",
+            as: "officer",
+          },
+        },
+        { $unwind: "$officer" },
+        {
+          $group: {
+            _id: {
+              department: { $ifNull: ["$officer.department", "Unassigned"] },
+              stressLevel: "$stressLevel",
+            },
+            count: { $sum: 1 },
+          },
+        },
+      ]);
+
+      const [totalAppointments, completedAppointments, pendingAppointments] =
+        await Promise.all([
+          Appointment.countDocuments({}),
+          Appointment.countDocuments({ status: "completed" }),
+          Appointment.countDocuments({ status: "scheduled" }),
+        ]);
+      const sessionsRecorded = await CounselingSession.countDocuments({});
+      counselingStats = {
+        totalAppointments,
+        completedAppointments,
+        pendingAppointments,
+        sessionsRecorded,
+      };
+    }
+
+    // Shape department comparison: [{ department, low, moderate, high, total }]
+    const deptMap = new Map<string, any>();
+    for (const row of departmentComparison) {
+      const dept = row._id.department;
+      if (!deptMap.has(dept))
+        deptMap.set(dept, {
+          department: dept,
+          low: 0,
+          moderate: 0,
+          high: 0,
+          total: 0,
+        });
+      const entry = deptMap.get(dept);
+      entry[row._id.stressLevel] = row.count;
+      entry.total += row.count;
+    }
+    const departmentStats = Array.from(deptMap.values()).sort(
+      (a, b) => b.high - a.high
+    );
+
     return NextResponse.json({
       stressDistribution: stressDistribution.map((item: any) => ({
         stressLevel: item._id,
@@ -83,6 +151,8 @@ export async function GET(request: NextRequest) {
         total: averageStress[0]?.total || 0,
       },
       totalAssessments,
+      departmentStats,
+      counselingStats,
     });
   } catch (error) {
     console.error("[v0] Analytics API error:", error);

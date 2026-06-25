@@ -20,12 +20,36 @@ export async function PUT(request: Request) {
     }
 
     await connectDB();
-    const { firstname, lastname, email, password, phone, address } =
-      await request.json();
+    const {
+      firstname,
+      lastname,
+      email,
+      password,
+      phone,
+      address,
+      serviceNumber,
+      rank,
+      unit,
+      department,
+      contact,
+    } = await request.json();
 
     const user = await User.findById(decoded.id).select("+password");
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });
+    }
+
+    if (serviceNumber && serviceNumber !== user.serviceNumber) {
+      const existingService = await User.findOne({
+        serviceNumber,
+        _id: { $ne: user._id },
+      });
+      if (existingService) {
+        return NextResponse.json(
+          { error: "Service Number already exists" },
+          { status: 400 }
+        );
+      }
     }
 
     // Update fields
@@ -34,6 +58,11 @@ export async function PUT(request: Request) {
     if (email) user.email = email;
     if (phone) user.phone = phone;
     if (address) user.address = address;
+    if (serviceNumber !== undefined) user.serviceNumber = serviceNumber;
+    if (rank !== undefined) user.rank = rank;
+    if (unit !== undefined) user.unit = unit;
+    if (department !== undefined) user.department = department;
+    if (contact !== undefined) user.contact = contact;
 
     if (password) {
       user.password = await bcrypt.hash(password, 12);

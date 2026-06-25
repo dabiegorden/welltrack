@@ -15,18 +15,35 @@ import { CheckCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { STRESS_MANAGEMENT_TIPS } from "@/constants/stress-tips";
 
+interface AnswerOption {
+  label: string;
+  points: number;
+}
+
 interface Question {
   _id: string;
   text: string;
   category?: string;
+  options?: AnswerOption[];
+  isActive?: boolean;
 }
 
 interface AssessmentIntakeProps {
   templateId: string;
   templateName: string;
   questions: Question[];
-  onComplete?: () => void;
+  onComplete?: (result?: any) => void;
 }
+
+const DEFAULT_OPTIONS: AnswerOption[] = [
+  { label: "Never", points: 1 },
+  { label: "Sometimes", points: 2 },
+  { label: "Often", points: 3 },
+  { label: "Always", points: 4 },
+];
+
+const optionsFor = (q: Question): AnswerOption[] =>
+  q.options && q.options.length ? q.options : DEFAULT_OPTIONS;
 
 export function OfficerAssessmentIntake({
   templateId,
@@ -34,29 +51,39 @@ export function OfficerAssessmentIntake({
   questions,
   onComplete,
 }: AssessmentIntakeProps) {
-  const [responses, setResponses] = useState<Record<string, number>>(
-    questions.reduce((acc, q) => ({ ...acc, [q._id]: 0 }), {})
+  // Only present active questions to officers
+  const activeQuestions = questions.filter((q) => q.isActive !== false);
+
+  const [responses, setResponses] = useState<Record<string, number | null>>(
+    activeQuestions.reduce((acc, q) => ({ ...acc, [q._id]: null }), {})
   );
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [result, setResult] = useState<any>(null);
 
-  const handleScoreChange = (questionId: string, value: string) => {
-    const score = Math.min(4, Math.max(0, Number.parseInt(value) || 0));
+  const handleScoreChange = (questionId: string, points: number) => {
     setResponses((prev) => ({
       ...prev,
-      [questionId]: score,
+      [questionId]: points,
     }));
   };
 
   const handleSubmit = async () => {
+    const unanswered = activeQuestions.some(
+      (q) => responses[q._id] === null || responses[q._id] === undefined
+    );
+    if (unanswered) {
+      toast.error("Please answer all questions before submitting");
+      return;
+    }
+
     setIsSubmitting(true);
 
     try {
       const submissionData = {
         templateId,
-        responses: questions.map((q) => ({
+        responses: activeQuestions.map((q) => ({
           questionId: q._id,
           questionText: q.text,
           score: responses[q._id] || 0,
@@ -81,7 +108,7 @@ export function OfficerAssessmentIntake({
       setSubmitted(true);
       toast.success("Assessment submitted successfully");
 
-      onComplete?.();
+      onComplete?.(data);
     } catch (error) {
       console.error("[v0] Assessment submission error:", error);
       toast.error("Failed to submit assessment");
@@ -163,11 +190,11 @@ export function OfficerAssessmentIntake({
           <CardTitle className="text-white">{templateName}</CardTitle>
           <CardDescription>
             Please answer the following questions honestly. Your responses are
-            confidential. Enter a value from 0-4 for each question.
+            confidential. Select the option that best applies to you.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-8">
-          {questions.map((question, index) => (
+          {activeQuestions.map((question, index) => (
             <div key={question._id} className="space-y-3">
               <div className="flex items-start justify-between">
                 <label className="text-base font-medium text-white">
@@ -175,29 +202,29 @@ export function OfficerAssessmentIntake({
                 </label>
               </div>
 
-              <div className="flex items-center gap-3">
-                <Input
-                  type="number"
-                  min="0"
-                  max="4"
-                  value={responses[question._id] || 0}
-                  onChange={(e) =>
-                    handleScoreChange(question._id, e.target.value)
-                  }
-                  placeholder="0-4"
-                  className="w-24 bg-gray-800/50 border-gray-700"
-                />
-                <span className="text-sm text-gray-400">
-                  {responses[question._id] === 0 && "Not at all"}
-                  {responses[question._id] === 1 && "Slightly"}
-                  {responses[question._id] === 2 && "Moderately"}
-                  {responses[question._id] === 3 && "Considerably"}
-                  {responses[question._id] === 4 && "Severely"}
-                </span>
-              </div>
-
-              <div className="text-xs text-gray-500">
-                Valid range: 0 (Not at all) - 4 (Severely)
+              <div className="grid gap-2 sm:grid-cols-2">
+                {optionsFor(question).map((opt) => {
+                  const selected = responses[question._id] === opt.points;
+                  return (
+                    <button
+                      key={opt.label}
+                      type="button"
+                      onClick={() =>
+                        handleScoreChange(question._id, opt.points)
+                      }
+                      className={`flex items-center justify-between rounded-lg border px-4 py-3 text-left text-sm transition ${
+                        selected
+                          ? "border-blue-500 bg-blue-500/10 text-white"
+                          : "border-gray-700 bg-gray-800/50 text-gray-300 hover:border-gray-600"
+                      }`}
+                    >
+                      <span>{opt.label}</span>
+                      <span className="text-xs text-gray-500">
+                        {opt.points} pt
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
           ))}

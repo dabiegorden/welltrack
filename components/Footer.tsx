@@ -1,4 +1,4 @@
-import { Shield } from "lucide-react";
+import Image from "next/image";
 
 const Footer = () => {
   return (
@@ -6,9 +6,13 @@ const Footer = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16">
         <div className="lg:col-span-2">
           <div className="flex items-center gap-2 mb-4">
-            <div className="w-10 h-10 bg-linear-to-br from-blue-600 to-cyan-500 rounded-xl flex items-center justify-center">
-              <Shield className="w-6 h-6 text-white" />
-            </div>
+            <Image
+              src="/assets/logo.jpg"
+              alt="Sefwi-Wiawso Police Division logo"
+              width={40}
+              height={40}
+              className="w-10 h-10 rounded-xl object-cover"
+            />
             <span className="text-xl font-bold">WellTrack</span>
           </div>
           <p className="text-slate-400 mb-6 max-w-sm">

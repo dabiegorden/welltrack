@@ -4,6 +4,7 @@ import type React from "react";
 import { useState, useEffect } from "react";
 import { Menu, X, Shield, ChevronRight, LogOut, Calendar } from "lucide-react";
 import Link from "next/link";
+import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 
@@ -142,9 +143,13 @@ const Navbar = () => {
         <div className="h-20 flex items-center relative">
           {/* Logo (Left) */}
           <Link href="/" className="flex items-center gap-2 z-10">
-            <div className="w-10 h-10 bg-linear-to-br from-blue-600 to-cyan-500 rounded-xl flex items-center justify-center">
-              <Shield className="w-6 h-6 text-white" />
-            </div>
+            <Image
+              src="/assets/logo.jpg"
+              alt="Sefwi-Wiawso Police Division logo"
+              width={44}
+              height={44}
+              className="w-11 h-11 rounded-xl object-cover shadow-md"
+            />
             <span
               className={`text-xl font-bold ${
                 scrolled ? "text-slate-900" : "text-white"
@@ -314,9 +319,13 @@ const Navbar = () => {
                 <SheetHeader>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <div className="w-9 h-9 bg-linear-to-br from-blue-600 to-cyan-500 rounded-lg flex items-center justify-center">
-                        <Shield className="w-5 h-5 text-white" />
-                      </div>
+                      <Image
+                        src="/assets/logo.jpg"
+                        alt="Sefwi-Wiawso Police Division logo"
+                        width={36}
+                        height={36}
+                        className="w-9 h-9 rounded-lg object-cover"
+                      />
                       <SheetTitle>WellTrack</SheetTitle>
                     </div>
                     <SheetClose onClick={() => setIsOpen(false)}>

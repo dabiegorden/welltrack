@@ -1,8 +1,15 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import ModelClient, { isUnexpected } from "@azure-rest/ai-inference";
+import { AzureKeyCredential } from "@azure/core-auth";
 
-const apiKey = process.env.GEMINI_API_KEY;
-const genAI = apiKey ? new GoogleGenerativeAI(apiKey) : null;
-const MODEL_NAME = "gemini-3.5-flash";
+// GitHub Models (Azure AI Inference) — free marketplace models.
+// Configured via GITHUB_TOKEN in the environment.
+const token = process.env.GITHUB_TOKEN;
+const endpoint = "https://models.github.ai/inference";
+const MODEL_NAME = "deepseek/DeepSeek-V3-0324";
+
+const client = token
+  ? ModelClient(endpoint, new AzureKeyCredential(token))
+  : null;
 
 export interface AIAssessmentAnalysis {
   summary: string;
@@ -15,10 +22,133 @@ export interface AIGeneratedAssessment extends AIAssessmentAnalysis {
   maxScore: number;
 }
 
+export interface AIGeneratedQuestion {
+  text: string;
+  category: "workload" | "support" | "wellbeing" | "environment";
+  options: { label: string; points: number }[];
+}
+
+const VALID_CATEGORIES = [
+  "workload",
+  "support",
+  "wellbeing",
+  "environment",
+];
+
+const FALLBACK_OPTIONS = [
+  { label: "Never", points: 1 },
+  { label: "Sometimes", points: 2 },
+  { label: "Often", points: 3 },
+  { label: "Always", points: 4 },
+];
+
+/**
+ * Generates a set of scored stress-assessment questions from a prompt.
+ * Each question includes 4 scored answer options officers can choose from.
+ */
+export async function generateAssessmentQuestions(
+  prompt: string,
+  count: number
+): Promise<AIGeneratedQuestion[] | null> {
+  if (!client) return null;
+
+  const safeCount = Math.max(1, Math.min(30, Math.round(count) || 5));
+
+  try {
+    const userPrompt = `Create exactly ${safeCount} stress-assessment questions for police officers based on this topic/prompt:
+"""
+${prompt.trim()}
+"""
+
+Each question must measure stress and have 4 answer options ordered from least to most stress, scored 1 to 4.
+Categorize each question as one of: workload, support, wellbeing, environment.
+
+Respond ONLY with a JSON object in this exact shape:
+{
+  "questions": [
+    {
+      "text": "the question",
+      "category": "workload" | "support" | "wellbeing" | "environment",
+      "options": [
+        { "label": "Never", "points": 1 },
+        { "label": "Sometimes", "points": 2 },
+        { "label": "Often", "points": 3 },
+        { "label": "Always", "points": 4 }
+      ]
+    }
+  ]
+}
+Return exactly ${safeCount} questions.`;
+
+    const content = await runChat(SYSTEM_PROMPT, userPrompt);
+    if (!content) return null;
+    const parsed = extractJson(content);
+    const rawQuestions = Array.isArray(parsed.questions)
+      ? parsed.questions
+      : [];
+
+    const questions: AIGeneratedQuestion[] = rawQuestions
+      .filter((q: any) => q && typeof q.text === "string" && q.text.trim())
+      .map((q: any) => {
+        const options =
+          Array.isArray(q.options) && q.options.length
+            ? q.options
+                .filter((o: any) => o && o.label)
+                .map((o: any) => ({
+                  label: String(o.label),
+                  points: Number(o.points) || 0,
+                }))
+            : FALLBACK_OPTIONS;
+        return {
+          text: String(q.text).trim(),
+          category: VALID_CATEGORIES.includes(q.category)
+            ? q.category
+            : "wellbeing",
+          options,
+        };
+      });
+
+    return questions.length ? questions : null;
+  } catch (error) {
+    console.error("[github-ai] generateAssessmentQuestions error:", error);
+    return null;
+  }
+}
+
 function extractJson(text: string): any {
   const cleaned = text.replace(/```json|```/g, "").trim();
-  return JSON.parse(cleaned);
+  // Be forgiving: pull the first {...} block if extra prose surrounds it
+  const match = cleaned.match(/\{[\s\S]*\}/);
+  return JSON.parse(match ? match[0] : cleaned);
 }
+
+async function runChat(
+  systemPrompt: string,
+  userPrompt: string
+): Promise<string | null> {
+  if (!client) return null;
+  const response = await client.path("/chat/completions").post({
+    body: {
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      temperature: 0.7,
+      top_p: 0.9,
+      max_tokens: 2048,
+      model: MODEL_NAME,
+    },
+  });
+
+  if (isUnexpected(response)) {
+    throw response.body.error;
+  }
+
+  return response.body.choices?.[0]?.message?.content ?? null;
+}
+
+const SYSTEM_PROMPT =
+  "You are a wellness assistant supporting a police department's officer wellness program. You always respond with valid JSON only, no markdown fences or extra prose.";
 
 /**
  * Analyzes a completed Likert-scale assessment and produces a written
@@ -32,19 +162,14 @@ export async function generateAssessmentAnalysis(input: {
   stressLevel: "low" | "moderate" | "high";
   notes?: string;
 }): Promise<AIAssessmentAnalysis | null> {
-  if (!genAI) return null;
+  if (!client) return null;
 
   try {
-    const model = genAI.getGenerativeModel({
-      model: MODEL_NAME,
-      generationConfig: { responseMimeType: "application/json" },
-    });
-
     const responseLines = input.responses
       .map((r) => `- ${r.questionText} (score: ${r.score}/4)`)
       .join("\n");
 
-    const prompt = `You are a wellness assistant supporting a police department's officer wellness program. Analyze the following stress assessment submitted by an officer and produce a confidential summary for the wellness counselor reviewing it.
+    const prompt = `Analyze the following stress assessment submitted by an officer and produce a confidential summary for the wellness counselor reviewing it.
 
 Assessment: ${input.templateName}
 Total score: ${input.totalScore}/${input.maxScore}
@@ -63,8 +188,9 @@ Respond ONLY with a JSON object in this exact shape:
 }
 Provide 3-5 recommendations.`;
 
-    const result = await model.generateContent(prompt);
-    const parsed = extractJson(result.response.text());
+    const content = await runChat(SYSTEM_PROMPT, prompt);
+    if (!content) return null;
+    const parsed = extractJson(content);
 
     return {
       summary: String(parsed.summary || ""),
@@ -76,29 +202,24 @@ Provide 3-5 recommendations.`;
         : [],
     };
   } catch (error) {
-    console.error("[gemini] generateAssessmentAnalysis error:", error);
+    console.error("[github-ai] generateAssessmentAnalysis error:", error);
     return null;
   }
 }
 
 /**
  * Generates a full stress assessment (score, level, summary, recommendations)
- * from a free-text description provided by an officer.
+ * from a free-text description.
  */
 export async function generateAssessmentFromText(
-  description: string,
+  description: string
 ): Promise<AIGeneratedAssessment | null> {
-  if (!genAI) return null;
+  if (!client) return null;
 
   try {
-    const model = genAI.getGenerativeModel({
-      model: MODEL_NAME,
-      generationConfig: { responseMimeType: "application/json" },
-    });
+    const prompt = `An officer's situation has been described below. Based on this description, assess their current stress level.
 
-    const prompt = `You are a wellness assistant supporting a police department's officer wellness program. An officer has described how they are feeling in their own words. Based on this description, assess their current stress level.
-
-Officer's description:
+Description:
 """
 ${description.trim()}
 """
@@ -113,12 +234,13 @@ Respond ONLY with a JSON object in this exact shape:
 }
 Provide 3-5 recommendations.`;
 
-    const result = await model.generateContent(prompt);
-    const parsed = extractJson(result.response.text());
+    const content = await runChat(SYSTEM_PROMPT, prompt);
+    if (!content) return null;
+    const parsed = extractJson(content);
 
     const totalScore = Math.max(
       0,
-      Math.min(40, Math.round(Number(parsed.totalScore) || 0)),
+      Math.min(40, Math.round(Number(parsed.totalScore) || 0))
     );
 
     return {
@@ -133,7 +255,7 @@ Provide 3-5 recommendations.`;
         : [],
     };
   } catch (error) {
-    console.error("[gemini] generateAssessmentFromText error:", error);
+    console.error("[github-ai] generateAssessmentFromText error:", error);
     return null;
   }
 }

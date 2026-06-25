@@ -3,6 +3,7 @@ import { verifyToken } from "@/lib/auth";
 import { cookies } from "next/headers";
 import { connectDB } from "@/lib/config/mongodb";
 import AssessmentTemplate from "@/lib/models/AssessmentTemplate";
+import { computeMaxScore } from "@/lib/utils/assessment-scoring";
 
 export async function GET(request: NextRequest) {
   try {
@@ -64,7 +65,7 @@ export async function POST(request: NextRequest) {
       name,
       description,
       questions,
-      maxScore: questions.length * 4,
+      maxScore: computeMaxScore(questions),
       createdBy: payload.id,
     });
 

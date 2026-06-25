@@ -7,8 +7,42 @@ import { generateToken } from "@/lib/auth";
 export async function POST(request: Request) {
   try {
     await connectDB();
-    const { email, password, firstname, lastname, phone, address } =
-      await request.json();
+    const {
+      email,
+      password,
+      firstname,
+      lastname,
+      phone,
+      address,
+      serviceNumber,
+      rank,
+      unit,
+    } = await request.json();
+
+    if (!email || !password || !firstname || !lastname) {
+      return NextResponse.json(
+        { error: "Full name, email and password are required" },
+        { status: 400 }
+      );
+    }
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return NextResponse.json(
+        { error: "An account with this email already exists" },
+        { status: 400 }
+      );
+    }
+
+    if (serviceNumber) {
+      const existingService = await User.findOne({ serviceNumber });
+      if (existingService) {
+        return NextResponse.json(
+          { error: "Service Number already exists" },
+          { status: 400 }
+        );
+      }
+    }
 
     // Check if an admin already exists to prevent multiple admins via this endpoint
     // const existingAdmin = await User.findOne({ role: "admin" });
@@ -30,6 +64,11 @@ export async function POST(request: Request) {
       firstname,
       lastname,
       role: "admin",
+      phone,
+      address,
+      serviceNumber,
+      rank,
+      unit,
     });
 
     const token = generateToken({
