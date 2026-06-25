@@ -45,11 +45,11 @@ export const adminMenu = [
       //   url: "/admin-dashboard/counselors",
       //   icon: User,
       // },
-      {
-        title: "Departments",
-        url: "/admin-dashboard/departments",
-        icon: Building2,
-      },
+      // {
+      //   title: "Departments",
+      //   url: "/admin-dashboard/departments",
+      //   icon: Building2,
+      // },
       {
         title: "Appointments",
         url: "/admin-dashboard/appointments",
